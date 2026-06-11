@@ -184,3 +184,61 @@ Confirm: `ps -eLf | wc -l`, `ulimit -u`, `pids.current` in the cgroup, `ps aux |
 - **Incident flow**: ack → severity → IC + comms roles → **mitigate first** (rollback/failover/scale), root-cause later → blameless postmortem with owned action items. Metrics: MTTD/MTTR.
 - **PagerDuty**: escalation policies, schedules/overrides, and a story about killing noisy alerts (alert fatigue) scores points.
 - **New Relic**: APM transactions/distributed traces, NRQL shape — `SELECT percentile(duration, 99) FROM Transaction WHERE appName='X' FACET host TIMESERIES` — alert conditions tied to SLOs.
+
+---
+---
+
+# Part 3 — Containers & Kubernetes
+
+## 16. Containers Under the Hood (the "what IS a container" faker question)
+
+**The answer:** a container is **not a VM** — it's just a Linux process (tree) wrapped in three kernel features:
+1. **Namespaces** = what the process can *see* (pid, net, mnt, uts, ipc, user — its own PID 1, its own network stack, its own filesystem view)
+2. **cgroups** = what the process can *use* (CPU, memory, pids limits — the exit-137 machinery from Part 1)
+3. **Layered filesystem** (overlayfs) = image layers stacked read-only + a writable layer on top
+
+Say it like: *"A container is a process with namespaces for isolation, cgroups for limits, and an overlay filesystem — same kernel as the host, which is why `ps` on the host shows every container's processes."*
+
+**Direct Part 1 tie-ins (interviewers chain these deliberately):**
+- Container memory limit = cgroup limit → exceed it → **OOMKilled, exit 137** — host free RAM irrelevant.
+- **Your app is PID 1 inside the container** → it inherits init's reaping duty → apps that fork but don't reap fill the container with zombies. Fix: `docker run --init` / ECS `initProcessEnabled` (injects **tini**, a tiny init that just reaps).
+- Stop sequence: SIGTERM → grace period → SIGKILL. PID 1 also has weird signal defaults (no default SIGTERM handler!) — another reason tini exists.
+- Image vs container: image = read-only template/layers; container = running process + writable layer.
+
+## 17. Kubernetes Core
+
+**Architecture in one breath:** Control plane = **API server** (front door, everything goes through it), **etcd** (the database — lose it, lose the cluster), **scheduler** (picks nodes), **controller-manager** (reconciliation loops). Each node runs **kubelet** (starts/monitors pods), a container runtime (containerd), and **kube-proxy** (programs Service routing via iptables/IPVS).
+
+**The mental model that marks a senior:** Kubernetes is a **reconciliation engine** — you declare desired state in etcd, controllers loop forever making reality match. (Same philosophy as Terraform, but continuous.)
+
+- **Pod** = smallest unit; one or more containers sharing a network namespace (localhost to each other) and volumes. Pods are cattle — they get replaced, not fixed.
+- **Deployment → ReplicaSet → Pods**: Deployment manages rollouts; each new version = new ReplicaSet. `kubectl rollout undo` = instant rollback. Tune with maxSurge/maxUnavailable.
+- **Service** = stable virtual IP + DNS over an ever-changing pod set, selected by labels. Types: ClusterIP (internal), NodePort, LoadBalancer (cloud LB). **Ingress** for L7 routing. DNS: `svc-name.namespace.svc.cluster.local` via CoreDNS.
+- **Probes — know the difference cold (classic filter question):**
+  - **Liveness** fails → kubelet RESTARTS the container. 
+  - **Readiness** fails → pod is REMOVED from Service endpoints (no restart).
+  - **Startup** → holds off the other probes for slow-booting apps.
+  - The classic self-inflicted outage: aggressive liveness probe + slow dependency = cluster-wide restart storm of healthy-but-slow pods. Liveness should check "am I deadlocked," never "is my database up."
+- **Requests vs limits (the other guaranteed question):**
+  - **Requests** = what the scheduler reserves (placement math).
+  - **Limits** = what the cgroup enforces: CPU over limit → **throttled** (slow); memory over limit → **OOMKilled** (137, dead). 
+  - QoS classes: Guaranteed (req=limit) > Burstable > BestEffort — eviction order under node memory pressure, worst class first.
+- **HPA** scales replicas on metrics; **PDB** (PodDisruptionBudget) limits voluntary disruptions during node drains.
+- **RBAC** in one line: Role/ClusterRole = verbs on resources; RoleBinding attaches them to users/ServiceAccounts.
+- **EKS specifics** (likely their flavor): managed control plane, node groups or Fargate profiles, and **IRSA** — IAM Roles for Service Accounts = the K8s analog of ECS task roles: per-pod AWS permissions, no node-wide creds. (Ties to §11.)
+
+## 18. K8s Debugging Playbook (scenario-question ammo)
+
+**Universal first moves:** `kubectl describe pod X` (read Events — the answer is usually printed there), `kubectl logs X --previous` (the crashed container's logs, not the new one's), `kubectl get events --sort-by=.lastTimestamp`.
+
+| Symptom | Usual story | Where to look |
+|---|---|---|
+| **CrashLoopBackOff** | App starts and dies; backoff doubles between restarts | `logs --previous`; exit code in describe: 1 = app error, **137 = OOM or kill**, 143 = SIGTERM |
+| **OOMKilled** | Memory limit too low or app leak | describe shows OOMKilled + 137; bump limit or fix app; `kubectl top pod` for usage |
+| **ImagePullBackOff** | Bad tag, missing registry auth (imagePullSecrets/IRSA), or no NAT path to registry | describe Events spells it out |
+| **Pending forever** | Scheduler can't place it: insufficient requests-capacity, taints w/o tolerations, affinity rules, or unbound PVC | describe Events: "0/N nodes available: ..." tells you exactly why |
+| **Readiness failing / no traffic** | Wrong port, app slow to warm, dependency check in readiness probe | describe + endpoint list: `kubectl get endpoints svc-name` |
+| **Node NotReady** | kubelet down, disk/memory pressure, network partition | `kubectl describe node`: Conditions + taints; then SSH and it's Part 1 territory (D-states, OOM, full disk) |
+| **Evictions** | Node memory/disk pressure → BestEffort/Burstable pods killed | `kubectl get events`; fix requests/limits honesty |
+
+**The closing line for any K8s debugging answer:** "...and if the node itself is sick, I'm back to Linux fundamentals — kubelet logs, dmesg, D-states, disk pressure. Kubernetes is a scheduler on top of everything in Part 1."

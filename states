@@ -1,0 +1,17 @@
+scott@ubuntu1:~$ ps aux | awk '{print $8}' | sort -u
+I
+I<
+R
+R+
+S
+S+
+S<s
+SLsl
+SN
+STAT
+Sl
+Sl+
+Ss
+Ss+
+Ssl
+
