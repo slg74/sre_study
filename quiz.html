@@ -51,16 +51,9 @@
       margin-bottom: 4px;
     }
 
-    header p {
-      color: var(--muted);
-      font-size: 0.875rem;
-    }
+    header p { color: var(--muted); font-size: 0.875rem; }
 
-    .progress-wrap {
-      width: 100%;
-      max-width: 720px;
-      margin-bottom: 24px;
-    }
+    .progress-wrap { width: 100%; max-width: 720px; margin-bottom: 24px; }
 
     .progress-meta {
       display: flex;
@@ -70,12 +63,7 @@
       margin-bottom: 8px;
     }
 
-    .progress-bar {
-      height: 4px;
-      background: var(--border);
-      border-radius: 2px;
-      overflow: hidden;
-    }
+    .progress-bar { height: 4px; background: var(--border); border-radius: 2px; overflow: hidden; }
 
     .progress-fill {
       height: 100%;
@@ -115,11 +103,7 @@
       color: var(--text);
     }
 
-    .options {
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-    }
+    .options { display: flex; flex-direction: column; gap: 10px; }
 
     .option-btn {
       display: flex;
@@ -138,14 +122,8 @@
       width: 100%;
     }
 
-    .option-btn:hover:not(:disabled) {
-      border-color: var(--accent);
-      background: #1c2330;
-    }
-
-    .option-btn:disabled {
-      cursor: default;
-    }
+    .option-btn:hover:not(:disabled) { border-color: var(--accent); background: #1c2330; }
+    .option-btn:disabled { cursor: default; }
 
     .option-label {
       display: flex;
@@ -162,31 +140,11 @@
       transition: background 0.15s;
     }
 
-    .option-btn.correct {
-      background: var(--green-bg);
-      border-color: var(--green-border);
-      color: #56d364;
-    }
-
-    .option-btn.correct .option-label {
-      background: var(--green);
-      color: #fff;
-    }
-
-    .option-btn.wrong {
-      background: var(--red-bg);
-      border-color: var(--red-border);
-      color: var(--red);
-    }
-
-    .option-btn.wrong .option-label {
-      background: var(--red);
-      color: #fff;
-    }
-
-    .option-btn.dimmed {
-      opacity: 0.45;
-    }
+    .option-btn.correct { background: var(--green-bg); border-color: var(--green-border); color: #56d364; }
+    .option-btn.correct .option-label { background: var(--green); color: #fff; }
+    .option-btn.wrong { background: var(--red-bg); border-color: var(--red-border); color: var(--red); }
+    .option-btn.wrong .option-label { background: var(--red); color: #fff; }
+    .option-btn.dimmed { opacity: 0.45; }
 
     .feedback {
       margin-top: 20px;
@@ -198,23 +156,9 @@
     }
 
     .feedback.show { display: block; }
-
-    .feedback.correct-fb {
-      background: var(--green-bg);
-      border: 1px solid var(--green-border);
-      color: #56d364;
-    }
-
-    .feedback.wrong-fb {
-      background: var(--red-bg);
-      border: 1px solid var(--red-border);
-      color: #ffa198;
-    }
-
-    .feedback strong {
-      display: block;
-      margin-bottom: 4px;
-    }
+    .feedback.correct-fb { background: var(--green-bg); border: 1px solid var(--green-border); color: #56d364; }
+    .feedback.wrong-fb { background: var(--red-bg); border: 1px solid var(--red-border); color: #ffa198; }
+    .feedback strong { display: block; margin-bottom: 4px; }
 
     .feedback .study-ref {
       margin-top: 10px;
@@ -224,16 +168,9 @@
       color: var(--muted);
     }
 
-    .feedback .study-ref span {
-      color: var(--accent);
-      font-weight: 600;
-    }
+    .feedback .study-ref span { color: var(--accent); font-weight: 600; }
 
-    .actions {
-      margin-top: 24px;
-      display: flex;
-      justify-content: flex-end;
-    }
+    .actions { margin-top: 24px; display: flex; justify-content: flex-end; }
 
     .btn {
       background: var(--accent);
@@ -251,12 +188,7 @@
     .btn:disabled { opacity: 0.4; cursor: default; }
 
     /* Score screen */
-    #score-screen {
-      display: none;
-      width: 100%;
-      max-width: 720px;
-      text-align: center;
-    }
+    #score-screen { display: none; width: 100%; max-width: 720px; text-align: center; }
 
     .score-card {
       background: var(--surface);
@@ -265,25 +197,9 @@
       padding: 40px 28px;
     }
 
-    .score-number {
-      font-size: 4rem;
-      font-weight: 800;
-      color: var(--accent);
-      line-height: 1;
-      margin-bottom: 8px;
-    }
-
-    .score-label {
-      font-size: 1rem;
-      color: var(--muted);
-      margin-bottom: 24px;
-    }
-
-    .score-grade {
-      font-size: 1.25rem;
-      font-weight: 600;
-      margin-bottom: 32px;
-    }
+    .score-number { font-size: 4rem; font-weight: 800; color: var(--accent); line-height: 1; margin-bottom: 8px; }
+    .score-label { font-size: 1rem; color: var(--muted); margin-bottom: 24px; }
+    .score-grade { font-size: 1.25rem; font-weight: 600; margin-bottom: 32px; }
 
     .score-breakdown {
       display: flex;
@@ -309,13 +225,7 @@
     .breakdown-item.pass { border-color: var(--green-border); }
     .breakdown-item.fail { border-color: var(--red-border); }
 
-    .breakdown-dot {
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      flex-shrink: 0;
-    }
-
+    .breakdown-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
     .breakdown-dot.pass { background: var(--green); }
     .breakdown-dot.fail { background: var(--red); }
 
@@ -341,11 +251,7 @@
     .restart-btn:hover { background: rgba(88,166,255,0.1); }
 
     /* Start screen */
-    #start-screen {
-      width: 100%;
-      max-width: 720px;
-      text-align: center;
-    }
+    #start-screen { width: 100%; max-width: 720px; text-align: center; }
 
     .start-card {
       background: var(--surface);
@@ -354,11 +260,7 @@
       padding: 40px 28px;
     }
 
-    .start-card h2 {
-      font-size: 1.5rem;
-      font-weight: 700;
-      margin-bottom: 12px;
-    }
+    .start-card h2 { font-size: 1.5rem; font-weight: 700; margin-bottom: 12px; }
 
     .start-card p {
       color: var(--muted);
@@ -372,7 +274,7 @@
       flex-wrap: wrap;
       gap: 6px;
       justify-content: center;
-      margin-bottom: 32px;
+      margin-bottom: 28px;
     }
 
     .sections-list span {
@@ -384,10 +286,60 @@
       color: var(--muted);
     }
 
+    /* Question count selector */
+    .count-label {
+      font-size: 0.8rem;
+      color: var(--muted);
+      margin-bottom: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      font-weight: 600;
+    }
+
+    .count-options {
+      display: flex;
+      gap: 10px;
+      justify-content: center;
+      margin-bottom: 28px;
+      flex-wrap: wrap;
+    }
+
+    .count-btn {
+      background: var(--bg);
+      border: 2px solid var(--border);
+      border-radius: var(--radius);
+      color: var(--muted);
+      font-size: 1.1rem;
+      font-weight: 700;
+      padding: 12px 28px;
+      cursor: pointer;
+      transition: border-color 0.15s, color 0.15s, background 0.15s;
+      min-width: 80px;
+    }
+
+    .count-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+    .count-btn.selected {
+      border-color: var(--accent);
+      color: var(--accent);
+      background: rgba(88,166,255,0.08);
+    }
+
+    .count-sub {
+      display: block;
+      font-size: 0.65rem;
+      font-weight: 400;
+      color: var(--muted);
+      margin-top: 2px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
     @media (max-width: 480px) {
       .card, .score-card, .start-card { padding: 20px 16px; }
       .question-text { font-size: 1rem; }
       .score-number { font-size: 3rem; }
+      .count-btn { padding: 10px 18px; min-width: 64px; }
     }
   </style>
 </head>
@@ -403,18 +355,27 @@
     <h2>Ready to quiz yourself?</h2>
     <p>
       Questions are drawn from all 18 sections of the Linux SRE cheatsheet,<br>
-      covering Linux fundamentals, AWS/Terraform/IAM, and Kubernetes.<br>
-      Each round shuffles a random selection of questions.
+      covering Linux fundamentals, Terraform, AWS, and Kubernetes.<br>
+      Each round shuffles a fresh random selection.
     </p>
     <div class="sections-list" id="sections-list"></div>
-    <button class="btn" onclick="startQuiz()">Start Quiz</button>
+
+    <div class="count-label">How many questions?</div>
+    <div class="count-options">
+      <button class="count-btn" data-count="10" onclick="selectCount(this)">10<span class="count-sub">quick</span></button>
+      <button class="count-btn selected" data-count="20" onclick="selectCount(this)">20<span class="count-sub">standard</span></button>
+      <button class="count-btn" data-count="50" onclick="selectCount(this)">50<span class="count-sub">thorough</span></button>
+      <button class="count-btn" data-count="100" onclick="selectCount(this)">100<span class="count-sub">full grind</span></button>
+    </div>
+
+    <button class="btn" id="start-btn" onclick="startQuiz()">Start Quiz</button>
   </div>
 </div>
 
 <div id="quiz-screen" style="display:none; width:100%; max-width:720px;">
   <div class="progress-wrap">
     <div class="progress-meta">
-      <span id="q-counter">Question 1 of 45</span>
+      <span id="q-counter">Question 1 of 20</span>
       <span id="score-live">Score: 0</span>
     </div>
     <div class="progress-bar">
@@ -445,6 +406,7 @@
 
 <script>
 const ALL_QUESTIONS = [
+
   // ── Section 1: Magic Numbers ──────────────────────────────────────────────
   {
     section: "Section 1: The Magic Numbers",
@@ -463,7 +425,7 @@ const ALL_QUESTIONS = [
       "32768 is the size of the kernel call stack"
     ],
     answer: 1,
-    explanation: "32768 = 2^15 is the historical compiled-in default for pid_max. Once reached, the kernel wraps back around from PID 300-ish. Still the default on minimal installs; systemd raises it on modern systems."
+    explanation: "32768 = 2^15 is the historical compiled-in default for pid_max. Once reached, the kernel wraps back around. Still the default on minimal installs; systemd raises it on modern systems."
   },
   {
     section: "Section 1: The Magic Numbers",
@@ -475,11 +437,11 @@ const ALL_QUESTIONS = [
       "4096 ports × 16 reserved ranges = 65536"
     ],
     answer: 1,
-    explanation: "The port field in the TCP and UDP headers is 16 bits → 2^16 = 65536 possible values (0–65535). The ephemeral range defaults to 32768–60999 (~28k ports)."
+    explanation: "The port field in the TCP and UDP headers is 16 bits → 2^16 = 65536 possible values (0–65535). Ephemeral range defaults to 32768–60999 (~28k ports)."
   },
   {
     section: "Section 1: The Magic Numbers",
-    question: "What does modern systemd (v243+, ~2019) raise pid_max to at boot, and what power of 2 is it?",
+    question: "What does modern systemd (v243+) raise pid_max to at boot, and what power of 2 is it?",
     options: ["65536 — 2^16", "1048576 — 2^20", "4194304 — 2^22", "2147483648 — 2^31"],
     answer: 2,
     explanation: "Systemd v243+ raises pid_max to 4194304 = 2^22, the kernel's PID_MAX_LIMIT on 64-bit. Verify with: cat /proc/sys/kernel/pid_max"
@@ -489,7 +451,7 @@ const ALL_QUESTIONS = [
     question: "You're seeing 'Cannot assign requested address' + TIME_WAIT pileup in ss -s. What is the root cause?",
     options: [
       "The destination server is rejecting connections",
-      "Ephemeral port exhaustion — ~28k outbound connections used up the 32768–60999 range per src-IP/dest pair",
+      "Ephemeral port exhaustion — the 32768–60999 range is exhausted per src-IP/dest pair",
       "The firewall is dropping SYN packets",
       "The process has hit its RLIMIT_NOFILE limit"
     ],
@@ -527,7 +489,7 @@ const ALL_QUESTIONS = [
       "The process exceeded its CPU quota and was suspended"
     ],
     answer: 2,
-    explanation: "137 = 128 + 9 (SIGKILL). The cgroup OOM killer killed the process because it exceeded its memory limit. Host free RAM is irrelevant — it's the cgroup that matters. Classic aggravator: JVM sizing heap from host RAM."
+    explanation: "137 = 128 + 9 (SIGKILL). The cgroup OOM killer killed the process because it exceeded its memory limit. Host free RAM is irrelevant — it's the cgroup that matters."
   },
   {
     section: "Section 2: The Memory Story",
@@ -535,18 +497,18 @@ const ALL_QUESTIONS = [
     options: [
       "Whether the swap partition is enabled; free RAM prevents swapping",
       "The swap file size multiplier; free RAM is always used before swap",
-      "The kernel's tendency to proactively move cold anonymous pages to swap to preserve page cache — so free RAM coexists with active swapping",
+      "The kernel's tendency to proactively move cold anonymous pages to swap to preserve page cache",
       "The maximum swap space used as a percentage of RAM"
     ],
     answer: 2,
-    explanation: "vm.swappiness makes the kernel proactively swap cold anonymous pages to keep more page cache warm. A box with free RAM can actively be swapping — this is by design, not a bug."
+    explanation: "vm.swappiness makes the kernel proactively swap cold anonymous pages to keep page cache warm. A box with free RAM can actively be swapping — this is by design, not a bug."
   },
   {
     section: "Section 2: The Memory Story",
     question: "How do you protect a critical process (e.g., your monitoring agent) from the OOM killer?",
     options: [
       "Set RLIMIT_MEMLOCK to unlimited for the process",
-      "Set oom_score_adj = -1000 for the process (or systemd OOMScoreAdjust=-1000)",
+      "Set oom_score_adj = -1000 (or systemd OOMScoreAdjust=-1000 in the unit file)",
       "Use mlockall() to lock all pages into RAM",
       "Increase vm.swappiness to 100"
     ],
@@ -625,21 +587,117 @@ const ALL_QUESTIONS = [
       "You must use kill -17 (SIGCHLD) to force zombie cleanup"
     ],
     answer: 1,
-    explanation: "Zombies are already dead — no process to kill. Each holds a PID slot. Fix: get the parent to call wait() (e.g., fix the bug or restart the parent — init then adopts and reaps the children)."
+    explanation: "Zombies are already dead — no process to kill. Each holds a PID slot. Fix: get the parent to call wait() (fix the bug or restart the parent — init then adopts and reaps orphaned children)."
+  },
+  {
+    section: "Section 3: Process Lifecycle",
+    question: "What does execve() do to the current process?",
+    options: [
+      "Creates a new child process that runs the new program (same as fork + exec)",
+      "Replaces the current process's memory image with the new program — same PID, new code and data",
+      "Copies the current process and runs the new program in the copy",
+      "Suspends the current process and starts a new one alongside it"
+    ],
+    answer: 1,
+    explanation: "execve() replaces the calling process's text, data, and stack with the new program. The PID stays the same. This is the 'exec' half of the classic fork→exec pattern."
+  },
+  {
+    section: "Section 3: Process Lifecycle",
+    question: "What is Copy-on-Write (COW) in the context of fork()?",
+    options: [
+      "After fork(), all pages are immediately duplicated so parent and child are fully independent",
+      "After fork(), parent and child share the same physical pages until one writes — the kernel copies only that page at write time",
+      "COW means the child process copies all file descriptors when it opens a file",
+      "COW is a filesystem optimization for hard links, unrelated to process creation"
+    ],
+    answer: 1,
+    explanation: "COW makes fork() cheap: parent and child share physical pages marked read-only. On first write, the kernel copies just that page. This is why fork() is fast even for large processes — no immediate copy of gigabytes of heap."
+  },
+  {
+    section: "Section 3: Process Lifecycle",
+    question: "What happens to open file descriptors after fork()?",
+    options: [
+      "All FDs are closed in the child to prevent FD leaks",
+      "FDs are duplicated — parent and child share the same underlying file descriptions (same offset, same file table entry)",
+      "The child gets new independent FDs pointing to new file descriptions",
+      "Only stdin/stdout/stderr are inherited; all others are closed"
+    ],
+    answer: 1,
+    explanation: "After fork(), child inherits copies of all parent FDs pointing to the same open file descriptions (same offset/flags). Both parent and child must close sockets/pipes they don't use, or you'll leak FDs and block readers."
+  },
+  {
+    section: "Section 3: Process Lifecycle",
+    question: "What syscall does strace use internally to observe another process's syscalls?",
+    options: [
+      "/proc/<pid>/syscall — reads the current active syscall",
+      "ptrace() — the kernel's process-tracing interface",
+      "kprobe — attaches kernel probes to syscall entry points",
+      "inotify — watches for process events on the filesystem"
+    ],
+    answer: 1,
+    explanation: "strace uses ptrace() — the kernel's process-tracing syscall that lets a tracer inspect and control another process's execution, registers, and syscall arguments. gdb also uses ptrace()."
+  },
+  {
+    section: "Section 3: Process Lifecycle",
+    question: "What is the 'nice' value of a process and how does it affect CPU scheduling?",
+    options: [
+      "Nice value controls how much memory a process can use",
+      "Nice value (-20 to +19) is a hint to the CFS scheduler: lower (more negative) = higher priority, gets more CPU. Only root can decrease nice below 0",
+      "Nice value controls the process's I/O scheduling priority",
+      "Nice value is only meaningful for real-time (SCHED_FIFO) processes"
+    ],
+    answer: 1,
+    explanation: "Nice value ranges -20 (highest priority) to +19 (lowest). Default is 0. The CFS scheduler uses it to weight CPU time allocation. Only root can set negative values. renice changes it for a running process."
+  },
+  {
+    section: "Section 3: Process Lifecycle",
+    question: "A process is burning 100% CPU. You want to see which function it's spending time in, without recompiling or attaching a debugger. What tool do you use?",
+    options: [
+      "strace -p <pid> — shows all system calls being made",
+      "perf top -p <pid> — samples CPU counters to show hot functions, no recompile needed",
+      "ltrace -p <pid> — shows library calls",
+      "lsof -p <pid> — shows open file handles"
+    ],
+    answer: 1,
+    explanation: "perf top (or perf record + perf report) uses hardware performance counters to sample the instruction pointer and build a profile. Works on unmodified binaries. strace shows syscalls but adds significant overhead and doesn't show userspace CPU time."
+  },
+  {
+    section: "Section 3: Process Lifecycle",
+    question: "What does /proc/<pid>/fd contain?",
+    options: [
+      "The process's memory map (same as /proc/<pid>/maps)",
+      "A directory of symlinks, one per open file descriptor, each pointing to the actual file, socket, or pipe",
+      "The list of recent syscalls the process has made",
+      "The process's environment variables"
+    ],
+    answer: 1,
+    explanation: "/proc/<pid>/fd/ has one symlink per open FD pointing to the actual resource (e.g., /dev/null, socket:[12345], pipe:[67890]). Crucial for: finding deleted-but-open files (lsof | grep deleted), auditing what a process has open."
+  },
+  {
+    section: "Section 3: Process Lifecycle",
+    question: "What is the purpose of the T (stopped) state in ps?",
+    options: [
+      "The process has terminated and is waiting to be reaped — same as Z",
+      "The process has been paused via SIGSTOP (or Ctrl-Z SIGTSTP) and will resume when it receives SIGCONT",
+      "The process is throttled due to cgroup CPU limit enforcement",
+      "The process is waiting on a timer (nanosleep, clock_nanosleep)"
+    ],
+    answer: 1,
+    explanation: "T = Stopped. Sent SIGSTOP (programmatically) or SIGTSTP (Ctrl-Z from terminal). The process is suspended and consumes no CPU. SIGCONT resumes it. Used by shells for job control (fg, bg)."
   },
 
   // ── Section 4: Signals ────────────────────────────────────────────────────
   {
     section: "Section 4: Signals",
-    question: "Which two signals can NEVER be caught, ignored, or blocked — and why does this matter?",
+    question: "Which two signals can NEVER be caught, ignored, or blocked?",
     options: [
-      "SIGTERM (15) and SIGHUP (1) — apps must handle them",
+      "SIGTERM (15) and SIGHUP (1)",
       "SIGKILL (9) and SIGSTOP (19) — kernel-enforced, guaranteeing you can always stop any process",
-      "SIGINT (2) and SIGQUIT (3) — terminals need guaranteed control",
-      "SIGSEGV (11) and SIGABRT (6) — crash signals can't be deferred"
+      "SIGINT (2) and SIGQUIT (3)",
+      "SIGSEGV (11) and SIGABRT (6)"
     ],
     answer: 1,
-    explanation: "SIGKILL (9) and SIGSTOP (19) are kernel-enforced. No process can ever block them, making them the guaranteed 'last resort' for stopping runaway processes. Everything else is catchable."
+    explanation: "SIGKILL (9) and SIGSTOP (19) are kernel-enforced — no process can ever block them, making them the guaranteed 'last resort.' Everything else is catchable/blockable."
   },
   {
     section: "Section 4: Signals",
@@ -677,23 +735,23 @@ const ALL_QUESTIONS = [
       "45 runnable processes are waiting for CPU time slots"
     ],
     answer: 1,
-    explanation: "Linux load average = runnable (R) + uninterruptible (D). High load + idle CPU = I/O bottleneck. Classic: one hung NFS mount blocks every process that touches a file on it. Check: ps aux | awk '$8~/^D/'"
+    explanation: "Linux load average = runnable (R) + uninterruptible (D). High load + idle CPU = I/O bottleneck. Classic: one hung NFS mount blocks every process that touches a file on it."
   },
   {
     section: "Section 5: D-State / Load Average",
-    question: "You have D-state processes piling up. How do you find what they're blocked on?",
+    question: "How do you find what a D-state process is blocked on?",
     options: [
-      "strace -p <pid> — it attaches and shows the blocked syscall",
+      "strace -p <pid> — attaches and shows the blocked syscall",
       "cat /proc/<pid>/stack or use the WCHAN column (ps -o pid,stat,wchan,cmd)",
       "lsof -p <pid> to see open file handles",
       "Check /proc/<pid>/status for the BlockedOn field"
     ],
     answer: 1,
-    explanation: "/proc/<pid>/stack shows the kernel call stack — what function the process is sleeping in. WCHAN column shows the same. Note: lsof itself can hang on dead NFS mounts — don't use it blindly."
+    explanation: "/proc/<pid>/stack shows the kernel call stack — what function the process is sleeping in. WCHAN column shows the same thing. Note: lsof itself can hang on dead NFS mounts."
   },
   {
     section: "Section 5: D-State / Load Average",
-    question: "How can a D-state process be cleared? Pick the complete and correct answer.",
+    question: "How can a D-state process be cleared?",
     options: [
       "kill -9 immediately removes it from the process table",
       "Only by rebooting the system",
@@ -701,7 +759,7 @@ const ALL_QUESTIONS = [
       "Sending SIGCONT (18) resumes it from kernel sleep"
     ],
     answer: 2,
-    explanation: "A D-state process only unblocks when: (1) the I/O completes, (2) the I/O errors (umount -f/umount -l forces unmount, or a storage timeout fires), or (3) reboot. Signals are queued but not delivered until the syscall returns."
+    explanation: "A D-state process only unblocks when: (1) the I/O completes, (2) the I/O errors (umount -f/umount -l, storage timeout), or (3) reboot. Signals are queued but not delivered until the syscall returns."
   },
 
   // ── Section 6: Files, FDs, Inodes ─────────────────────────────────────────
@@ -709,13 +767,13 @@ const ALL_QUESTIONS = [
     section: "Section 6: Files, FDs, Inodes",
     question: "'df' shows the disk is full but 'du' shows plenty of free space. What's happening?",
     options: [
-      "The filesystem has a reserved-blocks percentage (tune2fs -m) consuming space",
+      "The filesystem has a reserved-blocks percentage consuming space",
       "Deleted-but-open files: data blocks aren't freed until all file descriptors are closed",
-      "The filesystem's journal is consuming space not counted by du",
-      "There's a bind mount causing df to see the same space twice"
+      "The filesystem journal is consuming space not counted by du",
+      "A bind mount is causing df to count the same space twice"
     ],
     answer: 1,
-    explanation: "When a process deletes a file but keeps an FD open, the data blocks remain allocated. du only sees directory entries (already gone). Find them: lsof | grep '(deleted)'. Fix: restart the holder process."
+    explanation: "When a process deletes a file but keeps an FD open, the data blocks remain allocated. du only sees directory entries (already gone). Find them: lsof | grep '(deleted)'. Fix: restart the holder."
   },
   {
     section: "Section 6: Files, FDs, Inodes",
@@ -727,19 +785,7 @@ const ALL_QUESTIONS = [
       "ENOMEM — out of memory; fix by adding RAM or swap"
     ],
     answer: 1,
-    explanation: "EMFILE = open() hit the per-process FD limit (ulimit -n). Band-aid: ulimit -n in the shell. Permanent: systemd LimitNOFILE= in the unit file, or /etc/security/limits.conf. System ceiling: fs.file-max. Common culprit: leaked sockets in CLOSE_WAIT."
-  },
-  {
-    section: "Section 6: Files, FDs, Inodes",
-    question: "What is the key difference between a hard link and a symlink?",
-    options: [
-      "Hard links store content inline; symlinks reference a path on disk",
-      "Hard link = another directory entry pointing to the same inode (can't cross filesystems or link dirs); symlink = tiny file containing a path (dangles if target deleted)",
-      "Hard links work across filesystems; symlinks do not",
-      "Symlinks preserve original permissions; hard links do not"
-    ],
-    answer: 1,
-    explanation: "Hard link: same inode, same data. Delete the original directory entry — data persists until link count = 0 AND FDs = 0. Symlink: a file containing a path. Delete the target → dangling symlink."
+    explanation: "EMFILE = open() hit the per-process FD limit (ulimit -n). Band-aid: ulimit -n in the shell. Permanent: systemd LimitNOFILE= in the unit file. System ceiling: fs.file-max. Common culprit: leaked CLOSE_WAIT sockets."
   },
   {
     section: "Section 6: Files, FDs, Inodes",
@@ -751,7 +797,7 @@ const ALL_QUESTIONS = [
       "Whether the reserved block percentage is too high"
     ],
     answer: 2,
-    explanation: "'df -i' shows inode usage. A directory with millions of tiny temp/queue files can exhaust inodes entirely, causing 'No space left on device' even with free disk blocks. Fix: delete the tiny files."
+    explanation: "'df -i' shows inode usage. A directory with millions of tiny temp/queue files can exhaust inodes entirely, causing 'No space left on device' even with free disk blocks."
   },
 
   // ── Section 7: DNS ────────────────────────────────────────────────────────
@@ -760,9 +806,9 @@ const ALL_QUESTIONS = [
     question: "'dig example.com' works instantly but the application reports a DNS failure. What is the most likely explanation?",
     options: [
       "The DNS server is intermittently dropping non-dig queries",
-      "A firewall is blocking UDP 53 specifically for this application's UID",
+      "A firewall is blocking UDP 53 for this application's UID",
       "dig bypasses getaddrinfo()/nsswitch.conf and hits DNS directly — the libc/NSS resolution path is broken, not DNS itself",
-      "The application uses a different DNS port than the standard 53"
+      "The application uses a different DNS port than 53"
     ],
     answer: 2,
     explanation: "dig talks to DNS directly. The app goes through getaddrinfo() → nsswitch.conf → /etc/hosts → systemd-resolved → resolv.conf. Any breakage in that chain is invisible to dig. Also check: JVM caches DNS forever by default."
@@ -787,7 +833,7 @@ const ALL_QUESTIONS = [
     options: [
       "Only the removed bucket is destroyed; the rest are unchanged",
       "Terraform detects the removal and updates state cleanly",
-      "Buckets at indices 3 and 4 are destroyed and recreated with new addresses (count is positional)",
+      "Buckets at indices 3 and 4 are destroyed and recreated (count is positional — removing index 2 shifts everything after it)",
       "An error is thrown because count doesn't support removal"
     ],
     answer: 2,
@@ -803,31 +849,127 @@ const ALL_QUESTIONS = [
       "The .terraform.lock.hcl file serializes applies"
     ],
     answer: 2,
-    explanation: "DynamoDB state locking: before apply, TF writes a lock item. Second apply sees the lock and fails. Lock released on completion. This is why every remote backend must have DynamoDB locking — or a concurrent apply corrupts state."
+    explanation: "DynamoDB state locking: before apply, TF writes a lock item. Second apply sees the lock and fails. Lock released on completion. Without this, concurrent applies corrupt the state file."
   },
   {
     section: "Section 10: Terraform",
-    question: "Someone manually changed an RDS instance class in the console. What does 'terraform plan' show, and what are your options?",
-    options: [
-      "Plan shows no changes — Terraform ignores out-of-band changes",
-      "Plan detects drift as a diff; options: let TF revert it, update code to match reality, or use ignore_changes if it's legitimately managed elsewhere",
-      "Terraform automatically imports the change and updates state",
-      "Plan fails with an error until you run terraform refresh manually"
-    ],
-    answer: 1,
-    explanation: "terraform plan refreshes state against reality and computes the diff. Drift shows as a proposed change. You choose: revert (apply), codify (update HCL), or exempt (ignore_changes lifecycle block). Plan output is your review artifact in CI."
-  },
-  {
-    section: "Section 10: Terraform",
-    question: "What is the safest way to rename a Terraform resource (e.g., rename aws_s3_bucket.old to aws_s3_bucket.new) without destroying it?",
+    question: "What is the safest way to rename a Terraform resource without destroying it?",
     options: [
       "Hand-edit the state file JSON to update the address",
-      "Delete it from config, run apply to destroy, re-add with new name, run apply to recreate",
-      "terraform state mv aws_s3_bucket.old aws_s3_bucket.new — or add a 'moved' block for version-controlled refactors",
+      "Delete it from config, run apply to destroy, re-add with new name",
+      "terraform state mv <old> <new> — or add a 'moved' block in config for version-controlled refactors",
       "Use terraform taint to mark it for recreation with the new name"
     ],
     answer: 2,
-    explanation: "terraform state mv updates the state address without touching the real resource. For team workflows, 'moved' blocks in .tf files are declarative and version-controlled. Never hand-edit the JSON state."
+    explanation: "terraform state mv updates the state address without touching the real resource. 'moved' blocks are declarative and version-controlled. NEVER hand-edit the JSON state — it will corrupt Terraform's view of reality."
+  },
+  {
+    section: "Section 10: Terraform",
+    question: "What is the difference between variables.tf and terraform.tfvars?",
+    options: [
+      "They are the same file with different names depending on project convention",
+      "variables.tf declares variable names and types (the schema); terraform.tfvars provides the actual values at runtime",
+      "terraform.tfvars contains provider configuration; variables.tf contains resource definitions",
+      "variables.tf is for input variables; terraform.tfvars is for output values"
+    ],
+    answer: 1,
+    explanation: "variables.tf declares what variables exist and their types/defaults (the schema). terraform.tfvars supplies their values. Separating them keeps configs portable — the same module can be called with different .tfvars per environment."
+  },
+  {
+    section: "Section 10: Terraform",
+    question: "What is a Terraform data source?",
+    options: [
+      "A way to write data to an external system from Terraform",
+      "A read-only lookup of existing infrastructure not managed by this config — fetches an AMI ID, VPC ID, secret value, etc.",
+      "A file that stores Terraform state data",
+      "A provider plugin that exposes database records"
+    ],
+    answer: 1,
+    explanation: "Data sources are read-only. They query real infrastructure or services (aws_ami, aws_vpc, aws_secretsmanager_secret) and make that data available in your config without Terraform owning the resource."
+  },
+  {
+    section: "Section 10: Terraform",
+    question: "What does 'create_before_destroy = true' in a lifecycle block do, and when do you need it?",
+    options: [
+      "Creates a backup copy of the resource before destroying it",
+      "Forces Terraform to provision the replacement before destroying the old — essential for resources that can't have a gap (SSL certs, ASG launch templates referenced by active ASGs)",
+      "Prevents any destroy operations on the resource",
+      "Creates the resource on every plan regardless of whether there are changes"
+    ],
+    answer: 1,
+    explanation: "Default destroy-then-create risks a gap where the resource doesn't exist. create_before_destroy inverts it. Essential for: ACM certs (ALB must always have one), security groups referenced by other SGs, ASG launch templates."
+  },
+  {
+    section: "Section 10: Terraform",
+    question: "What is the difference between terraform validate and terraform plan?",
+    options: [
+      "They are identical — both check for errors before applying",
+      "validate checks syntax/type correctness without calling provider APIs; plan calls provider APIs to compute the actual diff against real infrastructure",
+      "validate runs in CI only; plan can only run locally",
+      "validate checks the state file; plan checks the .tf config files"
+    ],
+    answer: 1,
+    explanation: "validate: pure static check — no network calls, no provider auth needed. Catches type errors, missing required fields. plan: calls provider APIs, refreshes state, computes create/update/destroy diff. Validate is fast; plan is the real pre-flight check."
+  },
+  {
+    section: "Section 10: Terraform",
+    question: "What is terraform -replace (formerly terraform taint) used for?",
+    options: [
+      "To permanently exclude a resource from Terraform management",
+      "To force recreation of a specific resource on the next apply — useful when a resource is unhealthy but Terraform sees no config change",
+      "To mark a resource output as sensitive so it's hidden in plan output",
+      "To replace the state file with a fresh import"
+    ],
+    answer: 1,
+    explanation: "terraform apply -replace=aws_instance.foo forces destroy+recreate even with no config change. Useful for: corrupted EC2 instances, expired certs, resources in an unknown state. taint was deprecated in TF 0.15.2."
+  },
+  {
+    section: "Section 10: Terraform",
+    question: "What is the risk of running 'terraform refresh' standalone in production?",
+    options: [
+      "It immediately applies changes — it's the same as terraform apply",
+      "It updates the state file to match real infrastructure — if reality diverged significantly, the next plan may show unexpected destroys",
+      "It deletes resources that have drifted from config",
+      "It has no risk — it's fully read-only and changes nothing"
+    ],
+    answer: 1,
+    explanation: "terraform refresh writes real-world state into the state file. If someone manually changed resources, refresh 'accepts' that drift into state — the next plan may then try to revert it, potentially with destructive changes. Review the plan carefully after a refresh."
+  },
+  {
+    section: "Section 10: Terraform",
+    question: "Why are workspaces NOT recommended for production environment separation at scale?",
+    options: [
+      "Workspaces don't support remote backends",
+      "Workspaces all share the same codebase and backend config — blast-radius isolation is weak; a bug in shared code affects all envs. Prefer separate directories/backends per environment",
+      "Workspaces are only available in Terraform Enterprise",
+      "Workspaces can't store secrets"
+    ],
+    answer: 1,
+    explanation: "Workspaces share one .tf codebase. A broken module or provider upgrade hits every workspace. Separate state files per environment (separate dirs/backends) give true isolation. Workspaces are fine for short-lived dev sandboxes."
+  },
+  {
+    section: "Section 10: Terraform",
+    question: "What is an explicit dependency (depends_on) vs an implicit one in Terraform?",
+    options: [
+      "Implicit dependencies are bugs; depends_on is always required",
+      "Implicit: Terraform infers order from attribute references (aws_subnet.id used in aws_instance). Explicit (depends_on): for ordering requirements with no attribute reference, like 'wait for IAM policy to propagate'",
+      "Implicit dependencies come from variables; explicit from outputs",
+      "They're identical — Terraform handles all ordering the same way internally"
+    ],
+    answer: 1,
+    explanation: "Terraform builds a dependency graph from attribute references — this is implicit. depends_on is for cases where there IS a real dependency but no HCL reference (e.g., an IAM policy that must exist before an EC2 instance's userdata calls AWS APIs)."
+  },
+  {
+    section: "Section 10: Terraform",
+    question: "Why should you avoid Terraform provisioners (remote-exec, local-exec) when possible?",
+    options: [
+      "They're only available in Terraform Enterprise",
+      "They break the declarative model: provisioner failures leave the resource created but state untracked — Terraform can't re-run them. Use cloud-init/user_data or config management tools instead",
+      "They require SSH access which is always a security risk",
+      "They can only run once and cannot be updated on subsequent applies"
+    ],
+    answer: 1,
+    explanation: "Provisioners are imperative escape hatches. If a provisioner fails mid-run, Terraform may mark the resource as tainted or leave it in an unknown state. They also break idempotency. cloud-init, userdata, and tools like Ansible are better choices."
   },
 
   // ── Section 11: IAM ───────────────────────────────────────────────────────
@@ -836,19 +978,19 @@ const ALL_QUESTIONS = [
     question: "In ECS, an engineer swaps the task execution role and the task role. What breaks?",
     options: [
       "Nothing — they're functionally identical",
-      "The ECS agent can no longer pull the container image from ECR or write CloudWatch logs; the app's S3 calls start failing with the wrong permissions",
+      "The ECS agent can no longer pull images from ECR or write CloudWatch logs; the app's AWS API calls fail with the wrong permissions",
       "Only the CloudWatch logs break",
       "The app can't reach the RDS database"
     ],
     answer: 1,
-    explanation: "Execution role = ECS agent operations (pull ECR image, push CW logs, fetch Secrets Manager/SSM). Task role = your application's AWS API calls. Swapping them breaks both — this is a common senior-filter question."
+    explanation: "Execution role = ECS agent operations (pull ECR image, push CW logs, fetch Secrets Manager/SSM values). Task role = your application's AWS API calls (S3, SQS, etc.). Swapping them breaks both — a common senior-filter question."
   },
   {
     section: "Section 11: IAM",
-    question: "Cross-account role assumption is failing with AccessDenied even though the permission policy looks correct. What should you check first?",
+    question: "Cross-account role assumption is failing with AccessDenied even though the permission policy is correct. What should you check first?",
     options: [
       "Whether VPC peering is set up between the accounts",
-      "The trust policy of the target role — it must explicitly list the source account/role as an allowed principal",
+      "The trust policy of the target role — it must list the source account/role as an allowed principal",
       "Whether Organizations SCPs are blocking role assumption globally",
       "Whether the IAM user has MFA enabled"
     ],
@@ -857,15 +999,27 @@ const ALL_QUESTIONS = [
   },
   {
     section: "Section 11: IAM",
-    question: "Why does IMDSv2 matter for EC2 security, and what attack does it mitigate?",
+    question: "In IAM policy evaluation, what always wins?",
     options: [
-      "IMDSv2 encrypts metadata traffic to prevent eavesdropping",
-      "IMDSv2 requires session tokens + hop-limit enforcement, blocking SSRF attacks from stealing instance credentials via the metadata service",
+      "An explicit Allow in an identity policy",
+      "An explicit Allow in a resource-based policy",
+      "An explicit Deny — it overrides any Allow regardless of source",
+      "An SCP Allow from the organization root"
+    ],
+    answer: 2,
+    explanation: "Explicit Deny always wins. Evaluation: default deny → explicit deny wins → explicit allow must survive SCPs, permission boundaries, and session policies. If any policy explicitly denies, it's denied — period."
+  },
+  {
+    section: "Section 11: IAM",
+    question: "Why does IMDSv2 matter for EC2 security?",
+    options: [
+      "IMDSv2 encrypts metadata traffic to prevent eavesdropping on instance credentials",
+      "IMDSv2 requires a session token via PUT before GET — hop-limit=1 blocks SSRF attacks from stealing instance credentials via a proxied request",
       "IMDSv2 requires IAM credentials to access metadata, eliminating anonymous access",
-      "IMDSv2 rate-limits metadata requests to prevent DoS against the metadata service"
+      "IMDSv2 rate-limits metadata requests to prevent DoS against the metadata endpoint"
     ],
     answer: 1,
-    explanation: "IMDSv2 requires a PUT request to get a session token first (hop-limit=1 blocks SSRF from proxied requests). IMDSv1 had no authentication — a single GET to 169.254.169.254 from any SSRF could steal instance credentials."
+    explanation: "IMDSv1: any GET to 169.254.169.254 from anywhere — SSRF in a web app could steal the instance role credentials. IMDSv2 requires a PUT-based session token first (hop-limit=1 prevents forwarded requests from fetching it)."
   },
 
   // ── Section 12: EC2 ───────────────────────────────────────────────────────
@@ -874,9 +1028,9 @@ const ALL_QUESTIONS = [
     question: "An EC2 instance passes its system status check but fails its instance status check. What does this tell you?",
     options: [
       "AWS's host hardware has failed — stop/start the instance to migrate",
-      "The problem is in your OS (kernel panic, full disk, bad network config, etc.) — AWS's infrastructure is fine",
+      "The problem is in your OS (kernel panic, full disk, bad network config) — AWS's infrastructure is fine",
       "The instance is being terminated by AWS for maintenance",
-      "The AMI is corrupted and the instance needs to be rebuilt"
+      "The AMI is corrupted and the instance needs rebuilding"
     ],
     answer: 1,
     explanation: "System check failure = AWS's host problem (stop/start migrates hardware). Instance check failure = your OS problem (kernel panic, full disk, misconfigured network). You own the fix for instance check failures."
@@ -891,59 +1045,107 @@ const ALL_QUESTIONS = [
       "Security Groups support IPv6; NACLs are IPv4 only"
     ],
     answer: 1,
-    explanation: "The stateful/stateless distinction is the answer interviewers want. SGs: stateful (established connection return traffic automatically allowed), instance-level, allow-only. NACLs: stateless (explicit rules for both directions), subnet-level, allow+deny."
+    explanation: "The stateful/stateless distinction is the answer interviewers want. SGs: stateful (established return traffic auto-allowed), instance-level, allow-only. NACLs: stateless (explicit rules for both directions), subnet-level, allow+deny."
+  },
+  {
+    section: "Section 12: EC2",
+    question: "What is the difference between gp2 and gp3 EBS volumes, and why is gp3 usually the better choice?",
+    options: [
+      "gp2 is newer and has better performance; gp3 is legacy",
+      "gp2 ties IOPS to volume size with burst credits that can exhaust; gp3 gives a baseline 3000 IOPS independently of size and is cheaper — plus you can provision more IOPS without upsizing",
+      "gp3 requires a reboot to resize; gp2 resizes online",
+      "They are identical — gp3 is just gp2 renamed in newer regions"
+    ],
+    answer: 1,
+    explanation: "gp2 IOPS = 3× GiB, with burst credits that exhaust — classic 'DB suddenly slow, CPU idle' incident. gp3: flat 3000 IOPS/125 MB/s baseline regardless of size, independently scalable to 16k IOPS, ~20% cheaper. Online migration with no downtime."
   },
 
   // ── Section 13: ECS ───────────────────────────────────────────────────────
   {
     section: "Section 13: ECS",
-    question: "An ECS Fargate task is stuck in PENDING forever. What are the most likely causes?",
+    question: "What is the ECS task shutdown sequence?",
     options: [
-      "The task's IAM role lacks permissions",
-      "Subnet/ENI exhaustion, inability to pull the image (execution role / ECR / NAT path), or service limits",
-      "The ALB target group health check is failing",
-      "The task definition CPU/memory values are invalid"
+      "SIGKILL immediately → task stops",
+      "SIGTERM → wait stopTimeout (default 30s) → SIGKILL → exit 137 if no graceful handler",
+      "SIGINT → SIGTERM → SIGKILL",
+      "SIGHUP → graceful drain → stop"
     ],
     answer: 1,
-    explanation: "Fargate PENDING stuck: subnet IP/ENI exhaustion, can't pull image (execution role missing ECR permissions, no NAT gateway, VPC endpoint not set up). Check stoppedReason on the task and CloudWatch logs for the ECS agent."
+    explanation: "ECS sends SIGTERM, waits stopTimeout (default 30s), then sends SIGKILL → exit 137. Without a graceful SIGTERM handler, you drop in-flight requests on every deploy."
   },
   {
     section: "Section 13: ECS",
-    question: "In ECS awsvpc networking mode, ALB health checks are failing even though the app is responding fine locally. What should you check?",
+    question: "An ECS Fargate task is stuck in PENDING. What are the most likely causes?",
     options: [
-      "Whether the ALB and tasks are in the same VPC",
-      "The Security Group on the task — it must allow inbound traffic from the ALB's SG on the container port",
-      "Whether the ALB is internet-facing vs internal",
-      "Whether the target group uses IP or instance target type"
+      "The task definition has a syntax error",
+      "Subnet IP/ENI exhaustion, can't pull image (execution role / ECR / NAT path), or hitting service limits",
+      "The ALB target group health check is failing",
+      "The task IAM role lacks S3 permissions"
     ],
     answer: 1,
-    explanation: "In awsvpc mode each task gets its own ENI and SG. The ALB reaches tasks via their ENI. The task's SG must allow inbound from the ALB's SG on the container port. Also check healthCheckGracePeriod if the app is slow to start."
+    explanation: "Fargate PENDING stuck: subnet IP/ENI exhaustion, execution role missing ECR permissions, no NAT gateway for public ECR, VPC endpoint not set up. Check stoppedReason on the task and ECS agent logs."
+  },
+  {
+    section: "Section 13: ECS",
+    question: "In ECS awsvpc networking mode, ALB health checks are failing even though the app responds fine locally. What is the most likely culprit?",
+    options: [
+      "The ALB and tasks are in different VPCs",
+      "The task's Security Group doesn't allow inbound traffic from the ALB's Security Group on the container port",
+      "The ALB is internet-facing but the tasks are in private subnets",
+      "The target group is using instance type instead of IP type"
+    ],
+    answer: 1,
+    explanation: "In awsvpc mode each task has its own ENI + SG. The task's SG must allow inbound from the ALB's SG on the container port. Also check healthCheckGracePeriod if the app is slow to start (prevents premature health check failures)."
   },
 
   // ── Section 14: RDS ───────────────────────────────────────────────────────
   {
     section: "Section 14: RDS",
-    question: "Your application needs high availability on RDS. Someone suggests adding a Read Replica. Why is this the wrong answer?",
+    question: "What is the difference between RDS Multi-AZ and Read Replicas?",
     options: [
-      "Read Replicas don't support PostgreSQL",
-      "Read Replicas use asynchronous replication — there can be replication lag, and failover is NOT automatic. Multi-AZ provides synchronous replication and automatic failover",
-      "Read Replicas double the cost without any benefit",
-      "Read Replicas can't be promoted to primary"
+      "Multi-AZ is for cost savings; Read Replicas are for availability",
+      "Multi-AZ = availability (synchronous standby, automatic failover ~60-120s); Read Replicas = read scale (async copies, observable lag, manual promotion for DR)",
+      "They are the same thing with different names",
+      "Multi-AZ uses asynchronous replication; Read Replicas use synchronous"
     ],
     answer: 1,
-    explanation: "Multi-AZ = AVAILABILITY: synchronous standby, automatic failover in ~60-120s (DNS CNAME flips). Read Replicas = SCALE: async reads, observable lag, manual promotion for DR. They serve different purposes."
+    explanation: "Multi-AZ = AVAILABILITY: synchronous standby, automatic failover (~60-120s, DNS CNAME flips), no reads served from standby. Read Replicas = SCALE: async copies you can read from, watch ReplicaLag, promotable for DR."
   },
   {
     section: "Section 14: RDS",
-    question: "A Lambda-heavy workload is exhausting RDS max_connections. Raising max_connections on a larger instance class is a temporary fix. What is the durable solution?",
+    question: "Your RDS database is suddenly slow with idle CPU. What is the first metric to check?",
     options: [
-      "Switch to Aurora Serverless for auto-scaling connections",
-      "Use RDS Proxy (or PgBouncer) for connection pooling in front of RDS",
-      "Increase max_connections in the parameter group and reboot",
-      "Add Read Replicas to distribute the connection load"
+      "FreeStorageSpace and ReplicaLag",
+      "gp2 BurstBalance — hitting zero causes DiskQueueDepth to climb and read latency to spike while CPU stays idle",
+      "DatabaseConnections count",
+      "CPUUtilization on the standby instance"
     ],
     answer: 1,
-    explanation: "Lambda/ECS open a new connection per invocation and don't reuse them. RDS Proxy sits in front of RDS, maintains a warm connection pool, and multiplexes many app connections onto fewer DB connections. max_connections is a band-aid."
+    explanation: "gp2 BurstBalance hitting zero is the classic 'DB suddenly slow, CPU idle' incident. DiskQueueDepth climbs, read latency jumps. Fix: migrate to gp3 or provisioned IOPS (online, no downtime). Alert on BurstBalance as a leading indicator."
+  },
+  {
+    section: "Section 14: RDS",
+    question: "Lambda and ECS tasks scaling out are exhausting RDS max_connections. What's the durable solution?",
+    options: [
+      "Increase max_connections in the parameter group",
+      "Scale up to a larger RDS instance class",
+      "Use RDS Proxy (or PgBouncer) for connection pooling — multiplexes many app connections onto fewer DB connections",
+      "Add a Read Replica to handle the connection load"
+    ],
+    answer: 2,
+    explanation: "Lambda/ECS create new connections on every invocation. RDS Proxy sits in front of RDS, maintains a warm pool, and multiplexes thousands of app connections onto the DB's limited max_connections. max_connections is a band-aid."
+  },
+  {
+    section: "Section 14: RDS",
+    question: "What happens during an RDS Multi-AZ failover, and what must your application do?",
+    options: [
+      "RDS automatically reconnects all existing database connections — no app changes needed",
+      "The standby is promoted, RDS updates the DNS CNAME (~60-120s), existing connections break — app must reconnect with a short DNS TTL and connection retry logic",
+      "The old primary recovers and resumes automatically after ~30 seconds",
+      "Multi-AZ failover requires a manual promote action via the console"
+    ],
+    answer: 1,
+    explanation: "Failover: standby promoted → DNS CNAME updated to new primary endpoint (~60-120s). All existing connections to the old primary are dropped. Your app must have retry logic and honor short DNS TTLs. Connection poolers (RDS Proxy) absorb most of this."
   },
 
   // ── Section 15: SRE Layer ─────────────────────────────────────────────────
@@ -953,35 +1155,35 @@ const ALL_QUESTIONS = [
     options: [
       "CPU utilization, memory usage, disk I/O, network throughput",
       "Latency, traffic, errors, saturation",
-      "Availability, reliability, MTTR, MTTD",
-      "P99 latency, error rate, deployment frequency, lead time"
+      "MTTD, MTTR, error budget, SLO",
+      "Availability, reliability, performance, capacity"
     ],
     answer: 1,
-    explanation: "The four golden signals: Latency (how long requests take), Traffic (how much demand), Errors (rate of failures), Saturation (how 'full' a resource is). Alert on symptoms (SLO burn), not causes (CPU%)."
+    explanation: "The four golden signals: Latency (how long requests take), Traffic (how much demand), Errors (rate of failures), Saturation (how full a resource is). Alert on symptoms (SLO burn), not causes (CPU%)."
   },
   {
     section: "Section 15: The SRE Layer",
     question: "The error budget is nearly exhausted for the quarter. How does this change what the team works on?",
     options: [
-      "The team accelerates feature work to ship before the budget resets",
-      "Feature development freezes and the team focuses on reliability improvements until the budget recovers",
-      "SLO targets are temporarily lowered to restore the budget",
+      "Accelerate feature work to ship before the budget resets",
+      "Feature development freezes; reliability improvements take priority until the budget recovers",
+      "SLO targets are temporarily lowered to restore budget",
       "Incidents are reclassified as planned maintenance to preserve budget"
     ],
     answer: 1,
-    explanation: "Error budget = 1 − SLO. Budget remaining → ship features. Budget burned → reliability work takes priority (freeze features). This turns the dev-vs-ops argument into math with shared incentives."
+    explanation: "Error budget = 1 − SLO. Budget remaining → ship features. Budget burned → reliability work takes priority. This turns dev-vs-ops into math with shared incentives."
   },
   {
     section: "Section 15: The SRE Layer",
     question: "What distinguishes an SLI, SLO, and SLA?",
     options: [
       "They're three names for the same metric at different granularities",
-      "SLI = measurement (p99 latency, success rate); SLO = target (99.9% success over 30d); SLA = external contract with financial penalties",
-      "SLI is the alert threshold; SLO is the pager policy; SLA is the customer-facing status page",
+      "SLI = measurement (p99 latency, success rate); SLO = target (99.9% success over 30d); SLA = external contract with financial penalties for breach",
+      "SLI is the alert threshold; SLO is the pager policy; SLA is the status page",
       "SLO is stricter than SLA; SLI is the internal version of SLO"
     ],
     answer: 1,
-    explanation: "SLI: the metric you measure (e.g., request success rate). SLO: the target you set on that metric (e.g., ≥ 99.9% over 30 days). SLA: the contract with customers that includes penalties when SLOs are missed."
+    explanation: "SLI: the metric you measure. SLO: the target you set on that metric. SLA: the external contract with customers that includes penalties when SLOs are missed. SLOs should be tighter than SLAs to give yourself a buffer."
   },
 
   // ── Section 16: Containers ────────────────────────────────────────────────
@@ -1002,12 +1204,12 @@ const ALL_QUESTIONS = [
     question: "Your containerized app forks child processes but they're accumulating as zombies. What's the fix?",
     options: [
       "Increase the pids cgroup limit to allow more processes",
-      "Use tini as PID 1 (docker --init or ECS initProcessEnabled) — it's a tiny init that properly reaps zombie children",
+      "Use tini as PID 1 (docker --init or ECS initProcessEnabled) — a minimal init that reaps zombie children automatically",
       "Add SIGCHLD handlers to every forked child",
       "Use --pid=host to share the host PID namespace and let the host init reap"
     ],
     answer: 1,
-    explanation: "Your app as PID 1 inherits init's zombie-reaping duty but most apps don't implement wait(). tini (docker --init / ECS initProcessEnabled) is a minimal init that just reaps children. This also fixes the 'no default SIGTERM handler for PID 1' problem."
+    explanation: "Your app as PID 1 inherits init's zombie-reaping duty but most apps don't implement wait(). tini is a minimal init that just reaps. This also fixes the 'PID 1 has no default SIGTERM handler' problem."
   },
 
   // ── Section 17: Kubernetes ────────────────────────────────────────────────
@@ -1016,82 +1218,82 @@ const ALL_QUESTIONS = [
     question: "Liveness probe is failing on your pods. What happens, and what's the classic mistake?",
     options: [
       "Pods are removed from Service endpoints but not restarted — traffic stops going to them",
-      "Pods are restarted by kubelet. Classic mistake: checking a dependency (database) in liveness — a DB outage cascades into a cluster-wide restart storm of perfectly healthy pods",
+      "Pods are restarted by kubelet. Classic mistake: checking a dependency (database) in liveness — a DB outage cascades into a cluster-wide restart storm of healthy pods",
       "The Deployment is rolled back to the previous version",
       "The HPA scales up replicas to compensate for the failing pods"
     ],
     answer: 1,
-    explanation: "Liveness failure → kubelet RESTARTS the container. Readiness failure → pod removed from Service endpoints (no restart). Liveness should only check 'am I deadlocked?' — never 'is my database up?' That's a readiness concern."
+    explanation: "Liveness failure → kubelet RESTARTS the container. Readiness failure → removed from endpoints (no restart). Liveness should only check 'am I deadlocked?' — never 'is my database up?' That's a readiness concern."
   },
   {
     section: "Section 17: Kubernetes Core",
     question: "What happens when a pod exceeds its CPU limit vs. its memory limit?",
     options: [
-      "Both CPU and memory over-limit result in the pod being OOMKilled",
-      "Both CPU and memory over-limit result in throttling with no pod restart",
+      "Both result in the pod being OOMKilled",
+      "Both result in throttling with no pod restart",
       "CPU over-limit → throttled (slowed, not killed); memory over-limit → OOMKilled (exit 137, container dies)",
       "CPU over-limit → pod evicted; memory over-limit → container restarted in-place"
     ],
     answer: 2,
-    explanation: "CPU is compressible: going over limit → throttled by the cgroup, not killed. Memory is not compressible: going over limit → OOMKilled (exit 137). This asymmetry catches people off guard — CPU throttling is silent."
+    explanation: "CPU is compressible: over limit → throttled by the cgroup, no kill. Memory is not compressible: over limit → OOMKilled (exit 137). CPU throttling is silent and insidious — it just makes your app slower with no visible error."
   },
   {
     section: "Section 17: Kubernetes Core",
-    question: "What is IRSA in EKS, and why is it preferred over node-level IAM roles?",
+    question: "What is IRSA in EKS, and why prefer it over node-level IAM roles?",
     options: [
-      "IRSA = Instance Role for Service Accounts — it's just IAM instance profiles renamed for K8s",
-      "IRSA = IAM Roles for Service Accounts — annotate a K8s SA with an IAM role, and pods using that SA get scoped AWS credentials. No node-wide credentials needed (least privilege per pod)",
+      "IRSA = Instance Role for Service Accounts — IAM instance profiles renamed for K8s",
+      "IRSA = IAM Roles for Service Accounts — annotate a K8s SA with an IAM role ARN, pods get scoped AWS credentials. No node-wide creds, least-privilege per workload",
       "IRSA is a way to share IAM users across multiple EKS clusters",
-      "IRSA = Internal Role-based Service Authentication — a Kubernetes-native RBAC mechanism"
+      "IRSA = Internal Role-based Service Authentication, a K8s-native RBAC mechanism"
     ],
     answer: 1,
-    explanation: "IRSA: annotate a Kubernetes ServiceAccount with an IAM role ARN. Pods using that SA get temporary AWS credentials scoped to that role via a projected token. Node-level roles give all pods on the node the same permissions — IRSA gives each workload exactly what it needs."
+    explanation: "IRSA: annotate a K8s ServiceAccount with an IAM role ARN. Pods using that SA get temporary credentials scoped to that role via a projected token. Node IAM roles give all pods on the node the same permissions — IRSA gives each workload exactly what it needs."
   },
   {
     section: "Section 17: Kubernetes Core",
-    question: "A Kubernetes Deployment was updated and pods are crash-looping. How do you instantly rollback?",
+    question: "A Deployment update is crash-looping. How do you instantly rollback?",
     options: [
       "kubectl delete deployment <name> and reapply the old manifest",
-      "kubectl rollout undo deployment/<name> — instantly reverts to the previous ReplicaSet",
-      "kubectl scale deployment <name> --replicas=0 then back to the previous count",
+      "kubectl rollout undo deployment/<name> — instantly switches back to the previous ReplicaSet",
+      "kubectl scale deployment <name> --replicas=0 then back to the old count",
       "Edit the Deployment's image tag back to the previous version manually"
     ],
     answer: 1,
-    explanation: "kubectl rollout undo deployment/<name> switches traffic back to the previous ReplicaSet instantly. Each Deployment rollout creates a new ReplicaSet — undo just changes which RS is active. No image tag lookup needed."
+    explanation: "kubectl rollout undo deployment/<name> reactivates the previous ReplicaSet instantly. Each Deployment rollout creates a new RS — undo just changes which RS is active. No image lookup needed."
   },
 
   // ── Section 18: K8s Debugging ─────────────────────────────────────────────
   {
     section: "Section 18: K8s Debugging Playbook",
-    question: "A pod is in CrashLoopBackOff. 'kubectl logs <pod>' shows nothing useful. What should you run instead?",
+    question: "A pod is in CrashLoopBackOff. 'kubectl logs <pod>' shows nothing useful. What should you run?",
     options: [
-      "kubectl describe pod <pod> — the Events section has the crash details",
+      "kubectl describe pod <pod> — the Events section has crash details",
       "kubectl logs <pod> --previous — shows the terminated container's logs before the latest restart",
       "kubectl exec <pod> -- journalctl -xe",
       "kubectl get events | grep <pod>"
     ],
     answer: 1,
-    explanation: "kubectl logs <pod> shows the CURRENT running container's logs — which just started and may be empty. --previous shows the crashed container's output. This is the most common debugging mistake in CrashLoopBackOff."
+    explanation: "kubectl logs shows the CURRENT container's logs — which just started and may be empty. --previous shows the crashed container's output. This is the most common CrashLoopBackOff debugging mistake."
   },
   {
     section: "Section 18: K8s Debugging Playbook",
-    question: "A pod is Pending. 'kubectl logs' returns 'Error from server: container not created'. What's the right next step?",
+    question: "A pod is stuck in Pending. kubectl logs returns 'Error from server: container not created'. What do you do?",
     options: [
       "Wait — the container is still initializing",
-      "kubectl describe pod <pod> — the Events section will say exactly why the scheduler can't place it (e.g., 'Insufficient memory', 'no nodes match taints')",
-      "kubectl get nodes to see if any nodes are NotReady",
+      "kubectl describe pod <pod> — Events will say exactly why the scheduler can't place it",
+      "kubectl get nodes to check for NotReady nodes",
       "Check the application's ConfigMap for misconfiguration"
     ],
     answer: 1,
-    explanation: "Pending = scheduler hasn't placed the pod. Logs are empty because no container has run. kubectl describe pod shows Events like '0/3 nodes available: 3 Insufficient memory.' or '...didn't match node affinity.' The Events section is always the first stop."
+    explanation: "Pending = scheduler hasn't placed the pod. No container has run so logs are empty. kubectl describe pod shows Events like '0/3 nodes available: 3 Insufficient memory.' The Events section is always the first stop."
   },
   {
     section: "Section 18: K8s Debugging Playbook",
-    question: "A Node shows NotReady. After the K8s-level checks, what layer should you investigate next?",
+    question: "A Node shows NotReady. After the K8s-level checks, what layer do you investigate next?",
     options: [
       "The Ingress controller configuration",
       "The cluster's etcd health",
-      "Linux fundamentals on the node itself: kubelet logs, dmesg, D-states, OOM events, disk pressure",
+      "Linux fundamentals on the node: kubelet logs, dmesg, D-states, OOM events, disk pressure",
       "The pod's resource requests causing scheduler problems"
     ],
     answer: 2,
@@ -1099,17 +1301,222 @@ const ALL_QUESTIONS = [
   },
   {
     section: "Section 18: K8s Debugging Playbook",
-    question: "Services have a selector but 'kubectl get endpoints <svc-name>' shows no addresses. What's wrong?",
+    question: "'kubectl get endpoints <svc-name>' shows no addresses. What are the two most likely causes?",
     options: [
       "The Service port doesn't match any container port",
-      "No pods with matching labels exist, OR all matching pods have failing Readiness probes (both remove pods from endpoints)",
+      "No pods match the selector label, OR pods exist but all have failing Readiness probes (readiness failure removes pods from endpoints without restarting)",
       "The Service type is ClusterIP and it's not accessible externally",
-      "The kube-proxy on the nodes needs to be restarted"
+      "kube-proxy on the nodes needs to be restarted"
     ],
     answer: 1,
-    explanation: "Empty endpoints = no pods match the selector, OR pods exist but Readiness is failing (readiness failure removes pods from endpoints without restarting them). Check: kubectl get pods -l <selector> and kubectl describe pod for readiness probe failures."
+    explanation: "Empty endpoints = no pods match the selector (wrong labels), OR pods exist but Readiness is failing (readiness failure silently removes pods from endpoints). Check: kubectl get pods -l <selector> and kubectl describe pod for readiness probe status."
+  },
+
+  // ── AWS: Networking & VPC ─────────────────────────────────────────────────
+  {
+    section: "AWS: Networking & VPC",
+    question: "What is the difference between a public subnet and a private subnet in a VPC?",
+    options: [
+      "Public subnets have more CIDR space; private subnets are smaller",
+      "A public subnet has a route 0.0.0.0/0 → Internet Gateway; a private subnet routes outbound via NAT Gateway with no inbound path from the internet",
+      "Public subnets use IPv6; private subnets are IPv4 only",
+      "Private subnets require VPN; public subnets allow direct SSH"
+    ],
+    answer: 1,
+    explanation: "Public subnet: route table has 0.0.0.0/0 → IGW (resources can be reached from internet if they have a public IP). Private subnet: no IGW route, outbound via NAT Gateway (which has the public IP). Resources in private subnets are not directly reachable from internet."
+  },
+  {
+    section: "AWS: Networking & VPC",
+    question: "What is the difference between CloudWatch and CloudTrail?",
+    options: [
+      "They are the same service with different names",
+      "CloudWatch = metrics, logs, alarms for operational monitoring; CloudTrail = API audit log (who called what AWS API, when, from where)",
+      "CloudWatch monitors network traffic; CloudTrail monitors application logs",
+      "CloudTrail is real-time monitoring; CloudWatch is for historical analysis"
+    ],
+    answer: 1,
+    explanation: "CloudWatch: operational telemetry — metrics (CPU, latency), logs (application output), alarms, dashboards. CloudTrail: immutable API audit trail — every AWS API call logged with principal, source IP, time, and parameters. CloudWatch for ops; CloudTrail for security/compliance."
+  },
+  {
+    section: "AWS: Networking & VPC",
+    question: "What is the difference between an ALB and an NLB?",
+    options: [
+      "ALB is strictly better; NLB is deprecated",
+      "ALB operates at L7 (HTTP/HTTPS) — path/host routing, sticky sessions, WAF integration; NLB operates at L4 (TCP/UDP) — ultra-low latency, static IPs, preserves source IP",
+      "ALB is for internal traffic; NLB is for internet-facing traffic",
+      "ALB supports TCP; NLB only supports HTTP"
+    ],
+    answer: 1,
+    explanation: "ALB (L7): path-based routing, host headers, WebSockets, gRPC, WAF integration, X-Forwarded-For. NLB (L4): TCP/UDP/TLS passthrough, preserves client source IP, static EIPs, handles millions of RPS with microsecond latency. Pick based on whether you need L7 features."
+  },
+  {
+    section: "AWS: Networking & VPC",
+    question: "What is a VPC endpoint, and why use it instead of routing S3/DynamoDB traffic through a NAT Gateway?",
+    options: [
+      "A VPC endpoint is a firewall rule between VPCs",
+      "A VPC endpoint routes traffic to AWS services through the AWS network — no NAT Gateway needed, cheaper (no data processing fees), traffic never touches the internet",
+      "VPC endpoints are only for S3 access",
+      "A VPC endpoint creates a dedicated physical connection to AWS"
+    ],
+    answer: 1,
+    explanation: "Gateway endpoints (S3, DynamoDB) and Interface endpoints route traffic within AWS's network — no NAT Gateway required for private subnets. Cheaper (no $0.045/GB NAT processing fee), more secure (traffic stays private), and removes a potential bottleneck."
+  },
+  {
+    section: "AWS: Networking & VPC",
+    question: "What is AWS Systems Manager Session Manager, and why prefer it over direct SSH?",
+    options: [
+      "Session Manager is slower but cheaper than SSH",
+      "Session Manager provides shell access via the SSM agent — no port 22, no SSH keys, all sessions logged to CloudWatch/S3, IAM controls access per instance",
+      "Session Manager requires the instance to have a public IP",
+      "Session Manager only works with Linux instances"
+    ],
+    answer: 1,
+    explanation: "SSM Session Manager: zero open inbound ports (no port 22), no SSH key management, IAM-controlled access, full session audit log to CloudWatch Logs/S3. Eliminates bastion hosts and SSH key rotation toil. Works on Linux and Windows."
+  },
+
+  // ── AWS: Lambda & Serverless ──────────────────────────────────────────────
+  {
+    section: "AWS: Lambda & Serverless",
+    question: "What is a Lambda cold start, and how do you reduce it?",
+    options: [
+      "Cold start = Lambda function exceeds its memory limit and is killed",
+      "Cold start = first invocation after idle initializes the execution environment (download code, start runtime, run init) — adds latency. Reduce with: Provisioned Concurrency, smaller packages, faster runtimes",
+      "Cold start = the time to deploy a new Lambda function version",
+      "Cold start only affects Java Lambdas running in VPCs"
+    ],
+    answer: 1,
+    explanation: "Cold start: first invocation spins up a new execution environment — download the package, initialize the runtime, run global init code. Mitigation: Provisioned Concurrency (keeps envs warm), minimize package size, prefer Go/Rust/Python over Java, move VPC-heavy work out of the critical path."
+  },
+  {
+    section: "AWS: Lambda & Serverless",
+    question: "Lambda is crashing with 'Task timed out after 3.00 seconds' even though the function runs fine locally. What is the most common cause in a VPC-enabled Lambda?",
+    options: [
+      "Lambda memory limit is too low, causing CPU throttling",
+      "The Lambda is in a private subnet with no NAT Gateway or VPC endpoint — it can't reach the internet or AWS APIs",
+      "The Lambda IAM role lacks timeout extension permissions",
+      "Lambda doesn't support VPC networking"
+    ],
+    answer: 1,
+    explanation: "VPC-attached Lambda in a private subnet needs a NAT Gateway (for internet) or VPC Interface Endpoints (for AWS APIs like S3, Secrets Manager, etc.) to reach outside the VPC. Locally there's no VPC — hence it works locally but times out in AWS."
+  },
+
+  // ── AWS: S3 & Storage ─────────────────────────────────────────────────────
+  {
+    section: "AWS: S3 & Storage",
+    question: "What is the difference between S3 Standard, S3 Standard-IA, and S3 Glacier Instant Retrieval?",
+    options: [
+      "They differ only in maximum object size",
+      "Standard: frequent access, highest cost, lowest latency. Standard-IA: infrequent access, lower storage cost with per-retrieval fee, same millisecond latency. Glacier Instant: archival cost, millisecond retrieval, minimum 90-day storage",
+      "Standard-IA has lower durability (99.9%) vs Standard (99.999999999%)",
+      "Glacier is for real-time streaming use cases"
+    ],
+    answer: 1,
+    explanation: "All three offer 11 9s durability. Standard: active data, no retrieval fee. Standard-IA: ~40-58% cheaper storage but $0.01/GB retrieval — use for backups accessed monthly or less. Glacier Instant: cheapest storage, ms retrieval, 90-day minimum. Use Lifecycle Policies to automate transitions."
+  },
+  {
+    section: "AWS: S3 & Storage",
+    question: "An S3 bucket hosting a static website starts returning 403 errors for all objects, even though the objects exist. What is the most likely cause?",
+    options: [
+      "The bucket region doesn't match the CloudFront distribution region",
+      "Block Public Access settings are enabled at the account or bucket level, overriding the bucket policy",
+      "The S3 bucket name contains uppercase letters",
+      "The IAM user running the website doesn't have s3:GetObject permission"
+    ],
+    answer: 1,
+    explanation: "S3 Block Public Access is a safeguard that overrides bucket policies and ACLs. If enabled at the account level, even a correct bucket policy granting public access will be blocked. Check: S3 console → Block Public Access settings (bucket and account level)."
+  },
+
+  // ── AWS: Auto Scaling & High Availability ─────────────────────────────────
+  {
+    section: "AWS: Auto Scaling & High Availability",
+    question: "What is the difference between horizontal and vertical scaling, and which does an Auto Scaling Group provide?",
+    options: [
+      "ASGs provide vertical scaling — they resize existing instances",
+      "Vertical = bigger instance (ceiling exists, usually requires downtime). Horizontal = more instances (no ceiling, preferred for stateless apps). ASGs provide horizontal scaling",
+      "ASGs provide both types automatically",
+      "Horizontal scaling is only possible with containers"
+    ],
+    answer: 1,
+    explanation: "Vertical scaling has limits and typically needs downtime (EC2 stop/resize/start). Horizontal scaling adds identical instances — linear, no single ceiling, stateless apps scale out trivially. ASGs manage horizontal scaling; they don't resize instances."
+  },
+  {
+    section: "AWS: Auto Scaling & High Availability",
+    question: "An ASG health check is set to 'EC2' type. An instance is serving 500 errors but the EC2 instance check passes. What happens, and how do you fix it?",
+    options: [
+      "The ASG terminates the instance automatically — EC2 health checks catch application errors",
+      "Nothing — EC2 health checks only see hypervisor-level health, not app health. Fix: switch to ELB health check type so app-dead-but-instance-alive instances get replaced",
+      "CloudWatch automatically triggers a scale-out event",
+      "The ASG's cooldown period prevents action for 5 minutes"
+    ],
+    answer: 1,
+    explanation: "EC2 health check: only sees hypervisor status (running/stopped). ELB health check: the load balancer's target group health check determines ASG instance health. Always use ELB type in production so instances serving errors get replaced."
+  },
+  {
+    section: "AWS: Auto Scaling & High Availability",
+    question: "What is the difference between target tracking scaling and step scaling in an ASG?",
+    options: [
+      "Target tracking is for memory; step scaling is for CPU",
+      "Target tracking: you specify a target metric value (e.g., 50% CPU) and AWS continuously adjusts capacity. Step scaling: you define specific alarms and scaling actions at each step. Target tracking is simpler and the modern default",
+      "Step scaling is more accurate; target tracking is deprecated",
+      "Target tracking requires a load balancer; step scaling works without one"
+    ],
+    answer: 1,
+    explanation: "Target tracking (preferred): declare 'keep average CPU at 50%' and AWS adjusts capacity automatically. Step scaling: manual alarm thresholds with specific 'add N instances when alarm fires.' Target tracking handles the math — use it unless you need very custom scaling behavior."
+  },
+
+  // ── AWS: KMS & Security ───────────────────────────────────────────────────
+  {
+    section: "AWS: KMS & Security",
+    question: "What is the difference between an AWS Managed Key and a Customer Managed Key (CMK) in KMS?",
+    options: [
+      "They offer identical functionality; only the naming differs",
+      "AWS Managed Keys: auto-created per service, auto-rotated, you can't control the key policy. CMKs: you create and own the key policy, set rotation, restrict principals, audit usage via CloudTrail",
+      "CMKs are only used for S3; AWS Managed Keys cover all other services",
+      "AWS Managed Keys are free; CMKs always cost $100/month"
+    ],
+    answer: 1,
+    explanation: "AWS Managed Keys: convenient default, no cost beyond API calls, but you can't restrict who uses them. CMKs: full control — custom key policy, cross-account grants, rotation schedule, CloudTrail audit per key. CMKs are required for compliance scenarios needing key access separation."
+  },
+  {
+    section: "AWS: KMS & Security",
+    question: "An application is receiving 'AccessDenied' from KMS even though the IAM policy allows kms:Decrypt. What else must be checked?",
+    options: [
+      "Nothing — IAM policy is the only thing that controls KMS access",
+      "The KMS key policy must also grant access to the principal — KMS uses both the key policy AND the IAM policy; if the key policy doesn't include the account or principal, IAM alone is insufficient",
+      "The application needs to be in the same region as the KMS key",
+      "kms:Decrypt requires MFA to be enabled on the IAM user"
+    ],
+    answer: 1,
+    explanation: "KMS has two control planes: the key policy (on the key itself) and IAM policies (on the principal). Both must allow the action. The key policy must at minimum allow the account root, then IAM policies delegate from there. Missing key policy = AccessDenied regardless of IAM."
+  },
+
+  // ── AWS: CloudFormation & IaC ─────────────────────────────────────────────
+  {
+    section: "AWS: CloudFormation",
+    question: "What is a CloudFormation StackSet and when would you use it over a regular stack?",
+    options: [
+      "StackSets is the same as regular stacks but with a different UI",
+      "StackSets deploys a CloudFormation stack across multiple AWS accounts and/or regions simultaneously — for org-wide guardrails, security baselines, and compliance controls at scale",
+      "StackSets is deprecated in favor of Terraform",
+      "StackSets only works within a single AWS account"
+    ],
+    answer: 1,
+    explanation: "StackSets: deploy one template to hundreds of accounts and regions in one operation via Organizations or explicit account targeting. Perfect for baseline IAM roles, CloudTrail logging, GuardDuty enablement, and security hub configuration across an entire org."
+  },
+  {
+    section: "AWS: CloudFormation",
+    question: "A CloudFormation stack update fails mid-way. What does CloudFormation do by default?",
+    options: [
+      "The stack stays in a partial state until you manually fix it",
+      "CloudFormation automatically rolls back to the previous successful state — all changes from the failed update are reversed",
+      "Only the failed resource is rolled back; all successful changes remain",
+      "The stack enters UPDATE_FAILED and must be deleted and recreated"
+    ],
+    answer: 1,
+    explanation: "CloudFormation has automatic rollback enabled by default. If any resource update fails, it reverts the entire stack to the last known good state. You can disable this with --disable-rollback for debugging, but it leaves the stack in a broken state."
   }
-];
+
+]; // end ALL_QUESTIONS
 
 // ── Quiz State ───────────────────────────────────────────────────────────────
 let questions = [];
@@ -1117,6 +1524,7 @@ let current = 0;
 let score = 0;
 let results = [];
 let answered = false;
+let selectedCount = 20;
 
 function shuffle(arr) {
   const a = [...arr];
@@ -1127,8 +1535,15 @@ function shuffle(arr) {
   return a;
 }
 
+function selectCount(btn) {
+  document.querySelectorAll('.count-btn').forEach(b => b.classList.remove('selected'));
+  btn.classList.add('selected');
+  selectedCount = parseInt(btn.dataset.count);
+}
+
 function startQuiz() {
-  questions = shuffle(ALL_QUESTIONS);
+  const pool = shuffle(ALL_QUESTIONS);
+  questions = pool.slice(0, Math.min(selectedCount, pool.length));
   current = 0;
   score = 0;
   results = [];
@@ -1154,23 +1569,19 @@ function renderQuestion() {
   container.innerHTML = '';
 
   const shuffledIndices = shuffle([0, 1, 2, 3]);
-  const correctOriginalIndex = q.answer;
-  let correctShuffledPos = -1;
 
   shuffledIndices.forEach((origIdx, pos) => {
-    if (origIdx === correctOriginalIndex) correctShuffledPos = pos;
     const btn = document.createElement('button');
     btn.className = 'option-btn';
     btn.dataset.origIdx = origIdx;
     btn.innerHTML = `<span class="option-label">${labels[pos]}</span><span>${q.options[origIdx]}</span>`;
-    btn.addEventListener('click', () => handleAnswer(btn, origIdx === correctOriginalIndex, q));
+    btn.addEventListener('click', () => handleAnswer(btn, origIdx === q.answer, q));
     container.appendChild(btn);
   });
 
   const fb = document.getElementById('feedback');
   fb.className = 'feedback';
   fb.textContent = '';
-
   document.getElementById('next-btn').style.display = 'none';
 }
 
@@ -1178,8 +1589,7 @@ function handleAnswer(btn, isCorrect, q) {
   if (answered) return;
   answered = true;
 
-  const allBtns = document.querySelectorAll('.option-btn');
-  allBtns.forEach(b => {
+  document.querySelectorAll('.option-btn').forEach(b => {
     b.disabled = true;
     const origIdx = parseInt(b.dataset.origIdx);
     if (origIdx === q.answer) {
@@ -1192,7 +1602,6 @@ function handleAnswer(btn, isCorrect, q) {
   });
 
   const fb = document.getElementById('feedback');
-
   if (isCorrect) {
     score++;
     fb.className = 'feedback correct-fb show';
@@ -1228,10 +1637,10 @@ function showScore() {
 
   document.getElementById('final-score').textContent = `${score}/${total}`;
 
-  const grade = pct >= 90 ? '🏆 Outstanding — you\'re ready to interview.' :
-                pct >= 75 ? '✅ Strong — a few topics to review.' :
-                pct >= 60 ? '📚 Getting there — hit the weak sections.' :
-                            '🔁 Keep studying — you\'ve got this.';
+  const grade = pct >= 90 ? 'Outstanding — you\'re ready to interview.' :
+                pct >= 75 ? 'Strong — a few topics to review.' :
+                pct >= 60 ? 'Getting there — hit the weak sections.' :
+                            'Keep studying — you\'ve got this.';
   document.getElementById('score-grade').textContent = grade;
 
   const breakdown = document.getElementById('score-breakdown');
@@ -1239,10 +1648,11 @@ function showScore() {
   results.forEach(({ q, correct }) => {
     const div = document.createElement('div');
     div.className = `breakdown-item ${correct ? 'pass' : 'fail'}`;
+    const shortSection = q.section.replace('Section ', '§').split(':')[0];
     div.innerHTML = `
       <div class="breakdown-dot ${correct ? 'pass' : 'fail'}"></div>
-      <span class="section-tag">${q.section.replace('Section ', '§').split(':')[0]}</span>
-      <span style="color:var(--muted); flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap">${q.question}</span>
+      <span class="section-tag">${shortSection}</span>
+      <span style="color:var(--muted);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${q.question}</span>
     `;
     breakdown.appendChild(div);
   });
@@ -1250,7 +1660,7 @@ function showScore() {
 
 function restartQuiz() {
   document.getElementById('score-screen').style.display = 'none';
-  startQuiz();
+  document.getElementById('start-screen').style.display = 'block';
 }
 
 // Populate sections list on start screen
@@ -1261,6 +1671,12 @@ sectionNames.forEach(s => {
   sp.textContent = s;
   sl.appendChild(sp);
 });
+
+// Show total question count
+document.querySelector('.start-card p').innerHTML =
+  `Questions drawn from all sections of the Linux SRE cheatsheet,<br>
+   covering Linux fundamentals, Terraform, AWS, and Kubernetes.<br>
+   <strong style="color:var(--accent)">${ALL_QUESTIONS.length} questions</strong> in the bank — each round shuffles a fresh random selection.`;
 </script>
 </body>
 </html>
