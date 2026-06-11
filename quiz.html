@@ -1,0 +1,1266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Linux SRE Interview Quiz</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0d1117;
+      --surface: #161b22;
+      --border: #30363d;
+      --text: #e6edf3;
+      --muted: #8b949e;
+      --accent: #58a6ff;
+      --green: #2ea043;
+      --green-bg: #0d2818;
+      --green-border: #238636;
+      --red: #f85149;
+      --red-bg: #2d0f0f;
+      --red-border: #da3633;
+      --yellow: #d29922;
+      --yellow-bg: #2d2208;
+      --radius: 8px;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 24px 16px 60px;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 32px;
+      width: 100%;
+      max-width: 720px;
+    }
+
+    header h1 {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: var(--accent);
+      letter-spacing: -0.02em;
+      margin-bottom: 4px;
+    }
+
+    header p {
+      color: var(--muted);
+      font-size: 0.875rem;
+    }
+
+    .progress-wrap {
+      width: 100%;
+      max-width: 720px;
+      margin-bottom: 24px;
+    }
+
+    .progress-meta {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.8rem;
+      color: var(--muted);
+      margin-bottom: 8px;
+    }
+
+    .progress-bar {
+      height: 4px;
+      background: var(--border);
+      border-radius: 2px;
+      overflow: hidden;
+    }
+
+    .progress-fill {
+      height: 100%;
+      background: var(--accent);
+      border-radius: 2px;
+      transition: width 0.4s ease;
+    }
+
+    .card {
+      width: 100%;
+      max-width: 720px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 28px;
+    }
+
+    .section-badge {
+      display: inline-block;
+      font-size: 0.72rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--yellow);
+      background: var(--yellow-bg);
+      border: 1px solid var(--yellow);
+      border-radius: 4px;
+      padding: 2px 8px;
+      margin-bottom: 16px;
+    }
+
+    .question-text {
+      font-size: 1.1rem;
+      font-weight: 500;
+      line-height: 1.6;
+      margin-bottom: 24px;
+      color: var(--text);
+    }
+
+    .options {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .option-btn {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 14px 16px;
+      cursor: pointer;
+      text-align: left;
+      color: var(--text);
+      font-size: 0.925rem;
+      line-height: 1.5;
+      transition: border-color 0.15s, background 0.15s;
+      width: 100%;
+    }
+
+    .option-btn:hover:not(:disabled) {
+      border-color: var(--accent);
+      background: #1c2330;
+    }
+
+    .option-btn:disabled {
+      cursor: default;
+    }
+
+    .option-label {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      background: var(--border);
+      font-size: 0.75rem;
+      font-weight: 700;
+      flex-shrink: 0;
+      margin-top: 1px;
+      transition: background 0.15s;
+    }
+
+    .option-btn.correct {
+      background: var(--green-bg);
+      border-color: var(--green-border);
+      color: #56d364;
+    }
+
+    .option-btn.correct .option-label {
+      background: var(--green);
+      color: #fff;
+    }
+
+    .option-btn.wrong {
+      background: var(--red-bg);
+      border-color: var(--red-border);
+      color: var(--red);
+    }
+
+    .option-btn.wrong .option-label {
+      background: var(--red);
+      color: #fff;
+    }
+
+    .option-btn.dimmed {
+      opacity: 0.45;
+    }
+
+    .feedback {
+      margin-top: 20px;
+      padding: 16px;
+      border-radius: var(--radius);
+      font-size: 0.9rem;
+      line-height: 1.6;
+      display: none;
+    }
+
+    .feedback.show { display: block; }
+
+    .feedback.correct-fb {
+      background: var(--green-bg);
+      border: 1px solid var(--green-border);
+      color: #56d364;
+    }
+
+    .feedback.wrong-fb {
+      background: var(--red-bg);
+      border: 1px solid var(--red-border);
+      color: #ffa198;
+    }
+
+    .feedback strong {
+      display: block;
+      margin-bottom: 4px;
+    }
+
+    .feedback .study-ref {
+      margin-top: 10px;
+      padding-top: 10px;
+      border-top: 1px solid rgba(255,255,255,0.1);
+      font-size: 0.82rem;
+      color: var(--muted);
+    }
+
+    .feedback .study-ref span {
+      color: var(--accent);
+      font-weight: 600;
+    }
+
+    .actions {
+      margin-top: 24px;
+      display: flex;
+      justify-content: flex-end;
+    }
+
+    .btn {
+      background: var(--accent);
+      color: #0d1117;
+      border: none;
+      border-radius: var(--radius);
+      padding: 10px 24px;
+      font-size: 0.9rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: opacity 0.15s;
+    }
+
+    .btn:hover { opacity: 0.85; }
+    .btn:disabled { opacity: 0.4; cursor: default; }
+
+    /* Score screen */
+    #score-screen {
+      display: none;
+      width: 100%;
+      max-width: 720px;
+      text-align: center;
+    }
+
+    .score-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 40px 28px;
+    }
+
+    .score-number {
+      font-size: 4rem;
+      font-weight: 800;
+      color: var(--accent);
+      line-height: 1;
+      margin-bottom: 8px;
+    }
+
+    .score-label {
+      font-size: 1rem;
+      color: var(--muted);
+      margin-bottom: 24px;
+    }
+
+    .score-grade {
+      font-size: 1.25rem;
+      font-weight: 600;
+      margin-bottom: 32px;
+    }
+
+    .score-breakdown {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      text-align: left;
+      margin-bottom: 32px;
+      max-height: 360px;
+      overflow-y: auto;
+    }
+
+    .breakdown-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 0.82rem;
+      padding: 8px 12px;
+      border-radius: 6px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+    }
+
+    .breakdown-item.pass { border-color: var(--green-border); }
+    .breakdown-item.fail { border-color: var(--red-border); }
+
+    .breakdown-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .breakdown-dot.pass { background: var(--green); }
+    .breakdown-dot.fail { background: var(--red); }
+
+    .breakdown-item .section-tag {
+      color: var(--yellow);
+      font-weight: 600;
+      font-size: 0.75rem;
+      flex-shrink: 0;
+    }
+
+    .restart-btn {
+      background: transparent;
+      border: 1px solid var(--accent);
+      color: var(--accent);
+      border-radius: var(--radius);
+      padding: 10px 32px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+
+    .restart-btn:hover { background: rgba(88,166,255,0.1); }
+
+    /* Start screen */
+    #start-screen {
+      width: 100%;
+      max-width: 720px;
+      text-align: center;
+    }
+
+    .start-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 40px 28px;
+    }
+
+    .start-card h2 {
+      font-size: 1.5rem;
+      font-weight: 700;
+      margin-bottom: 12px;
+    }
+
+    .start-card p {
+      color: var(--muted);
+      font-size: 0.9rem;
+      line-height: 1.7;
+      margin-bottom: 24px;
+    }
+
+    .sections-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      justify-content: center;
+      margin-bottom: 32px;
+    }
+
+    .sections-list span {
+      font-size: 0.72rem;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 3px 8px;
+      color: var(--muted);
+    }
+
+    @media (max-width: 480px) {
+      .card, .score-card, .start-card { padding: 20px 16px; }
+      .question-text { font-size: 1rem; }
+      .score-number { font-size: 3rem; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>Linux SRE Interview Quiz</h1>
+  <p>Test your knowledge across all sections of the study guide</p>
+</header>
+
+<div id="start-screen">
+  <div class="start-card">
+    <h2>Ready to quiz yourself?</h2>
+    <p>
+      Questions are drawn from all 18 sections of the Linux SRE cheatsheet,<br>
+      covering Linux fundamentals, AWS/Terraform/IAM, and Kubernetes.<br>
+      Each round shuffles a random selection of questions.
+    </p>
+    <div class="sections-list" id="sections-list"></div>
+    <button class="btn" onclick="startQuiz()">Start Quiz</button>
+  </div>
+</div>
+
+<div id="quiz-screen" style="display:none; width:100%; max-width:720px;">
+  <div class="progress-wrap">
+    <div class="progress-meta">
+      <span id="q-counter">Question 1 of 45</span>
+      <span id="score-live">Score: 0</span>
+    </div>
+    <div class="progress-bar">
+      <div class="progress-fill" id="progress-fill" style="width:0%"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="section-badge" id="section-badge">Section</div>
+    <div class="question-text" id="question-text">Loading…</div>
+    <div class="options" id="options-container"></div>
+    <div class="feedback" id="feedback"></div>
+    <div class="actions">
+      <button class="btn" id="next-btn" style="display:none" onclick="nextQuestion()">Next →</button>
+    </div>
+  </div>
+</div>
+
+<div id="score-screen">
+  <div class="score-card">
+    <div class="score-number" id="final-score">0/0</div>
+    <div class="score-label">questions correct</div>
+    <div class="score-grade" id="score-grade"></div>
+    <div class="score-breakdown" id="score-breakdown"></div>
+    <button class="restart-btn" onclick="restartQuiz()">Try Again</button>
+  </div>
+</div>
+
+<script>
+const ALL_QUESTIONS = [
+  // ── Section 1: Magic Numbers ──────────────────────────────────────────────
+  {
+    section: "Section 1: The Magic Numbers",
+    question: "What is the Linux memory page size (and the default ext4/xfs block size)?",
+    options: ["1024 bytes (1 KiB)", "2048 bytes (2 KiB)", "4096 bytes (4 KiB)", "8192 bytes (8 KiB)"],
+    answer: 2,
+    explanation: "4096 bytes = 2^12 = 4 KiB is the default memory page size and ext4/xfs block size. Nearly every memory-alignment story in Linux traces back to this number."
+  },
+  {
+    section: "Section 1: The Magic Numbers",
+    question: "Why do old Linux systems wrap PIDs at 32768?",
+    options: [
+      "It's the default value of /proc/sys/kernel/threads-max",
+      "32768 = 2^15 is the historical default pid_max, stored in /proc/sys/kernel/pid_max",
+      "It's the per-user process limit (ulimit -u)",
+      "32768 is the size of the kernel call stack"
+    ],
+    answer: 1,
+    explanation: "32768 = 2^15 is the historical compiled-in default for pid_max. Once reached, the kernel wraps back around from PID 300-ish. Still the default on minimal installs; systemd raises it on modern systems."
+  },
+  {
+    section: "Section 1: The Magic Numbers",
+    question: "The TCP/UDP port space is 65536 ports. Why exactly that number?",
+    options: [
+      "It matches the default pid_max (32768 × 2)",
+      "65536 = 2^16 because the TCP/UDP header's port field is 16 bits wide (ports 0–65535)",
+      "It's an arbitrary IANA decision",
+      "4096 ports × 16 reserved ranges = 65536"
+    ],
+    answer: 1,
+    explanation: "The port field in the TCP and UDP headers is 16 bits → 2^16 = 65536 possible values (0–65535). The ephemeral range defaults to 32768–60999 (~28k ports)."
+  },
+  {
+    section: "Section 1: The Magic Numbers",
+    question: "What does modern systemd (v243+, ~2019) raise pid_max to at boot, and what power of 2 is it?",
+    options: ["65536 — 2^16", "1048576 — 2^20", "4194304 — 2^22", "2147483648 — 2^31"],
+    answer: 2,
+    explanation: "Systemd v243+ raises pid_max to 4194304 = 2^22, the kernel's PID_MAX_LIMIT on 64-bit. Verify with: cat /proc/sys/kernel/pid_max"
+  },
+  {
+    section: "Section 1: The Magic Numbers",
+    question: "You're seeing 'Cannot assign requested address' + TIME_WAIT pileup in ss -s. What is the root cause?",
+    options: [
+      "The destination server is rejecting connections",
+      "Ephemeral port exhaustion — ~28k outbound connections used up the 32768–60999 range per src-IP/dest pair",
+      "The firewall is dropping SYN packets",
+      "The process has hit its RLIMIT_NOFILE limit"
+    ],
+    answer: 1,
+    explanation: "Each outbound TCP connection consumes one ephemeral port. Default range 32768–60999 ≈ 28k ports. Fixes: widen the range, tcp_tw_reuse, more source IPs, or connection pooling."
+  },
+
+  // ── Section 2: Memory ─────────────────────────────────────────────────────
+  {
+    section: "Section 2: The Memory Story",
+    question: "In 'free -m' output, which metric tells you how much memory is actually available to start new applications?",
+    options: ["free", "used", "available", "shared"],
+    answer: 2,
+    explanation: "'available' = free RAM + reclaimable page cache. 'used' is misleading — it includes page cache the kernel hands back instantly. 500 MB 'free' on a 32 GB box is healthy ('Linux ate my RAM' trap)."
+  },
+  {
+    section: "Section 2: The Memory Story",
+    question: "What is RSS vs VSZ in a process's memory stats?",
+    options: [
+      "RSS = total virtual address space mapped; VSZ = pages actually in RAM",
+      "RSS = pages actually resident in physical RAM (working set); VSZ = total virtual address space mapped",
+      "RSS = resident swap size; VSZ = virtual swap zone",
+      "They're the same metric reported in different units"
+    ],
+    answer: 1,
+    explanation: "RSS (Resident Set Size) = pages actually in physical RAM. VSZ = total virtual address space mapped. Huge VSZ + small RSS is completely normal for JVMs and Go binaries."
+  },
+  {
+    section: "Section 2: The Memory Story",
+    question: "A container exits with code 137. What happened?",
+    options: [
+      "The application threw an unhandled exception and exited with code 1",
+      "The process received SIGTERM and exited cleanly via its shutdown hook",
+      "The cgroup OOM killer fired SIGKILL (128 + 9 = 137)",
+      "The process exceeded its CPU quota and was suspended"
+    ],
+    answer: 2,
+    explanation: "137 = 128 + 9 (SIGKILL). The cgroup OOM killer killed the process because it exceeded its memory limit. Host free RAM is irrelevant — it's the cgroup that matters. Classic aggravator: JVM sizing heap from host RAM."
+  },
+  {
+    section: "Section 2: The Memory Story",
+    question: "What does vm.swappiness control, and why can a box with 'free' RAM still be swapping?",
+    options: [
+      "Whether the swap partition is enabled; free RAM prevents swapping",
+      "The swap file size multiplier; free RAM is always used before swap",
+      "The kernel's tendency to proactively move cold anonymous pages to swap to preserve page cache — so free RAM coexists with active swapping",
+      "The maximum swap space used as a percentage of RAM"
+    ],
+    answer: 2,
+    explanation: "vm.swappiness makes the kernel proactively swap cold anonymous pages to keep more page cache warm. A box with free RAM can actively be swapping — this is by design, not a bug."
+  },
+  {
+    section: "Section 2: The Memory Story",
+    question: "How do you protect a critical process (e.g., your monitoring agent) from the OOM killer?",
+    options: [
+      "Set RLIMIT_MEMLOCK to unlimited for the process",
+      "Set oom_score_adj = -1000 for the process (or systemd OOMScoreAdjust=-1000)",
+      "Use mlockall() to lock all pages into RAM",
+      "Increase vm.swappiness to 100"
+    ],
+    answer: 1,
+    explanation: "oom_score_adj ranges from -1000 to +1000. Setting -1000 tells the OOM killer to never select this process. Use systemd OOMScoreAdjust= in the unit file for managed services."
+  },
+
+  // ── Section 3: Process Lifecycle ─────────────────────────────────────────
+  {
+    section: "Section 3: Process Lifecycle",
+    question: "A process shows state 'D' in ps output. What is true about it?",
+    options: [
+      "It is dead — a zombie waiting to be reaped by its parent",
+      "It is in uninterruptible sleep, alive but blocked mid-syscall on I/O, immune to kill -9, counts toward load average",
+      "It has been stopped with SIGSTOP and is suspended",
+      "It is a daemon that has detached from its terminal"
+    ],
+    answer: 1,
+    explanation: "D = Uninterruptible sleep. Alive, stuck mid-kernel-syscall (almost always I/O). kill -9 queues but doesn't land until the syscall returns. Counts toward load average. 'Dying to finish.'"
+  },
+  {
+    section: "Section 3: Process Lifecycle",
+    question: "What is a zombie process, and does it consume significant resources?",
+    options: [
+      "A process consuming 100% CPU in a tight loop — uses all CPU resources",
+      "A process stuck on I/O — uses no CPU but holds kernel resources",
+      "A process that has exited; just a PID + exit status awaiting parent's wait(). Uses no memory or CPU",
+      "A process that has been orphaned; uses normal resources until reaped by init"
+    ],
+    answer: 2,
+    explanation: "Zombie = already exited. Only occupies a PID slot and a small kernel struct holding the exit status. Does NOT count toward load average. Problem: enough zombies → fork() fails because PIDs are exhausted."
+  },
+  {
+    section: "Section 3: Process Lifecycle",
+    question: "Complete the symmetry sentence: 'A zombie is freed by its ___; a D-state process is freed by its ___.'",
+    options: [
+      "init / scheduler",
+      "parent via wait() / I/O completing or erroring out",
+      "kernel GC / OOM killer",
+      "scheduler / parent"
+    ],
+    answer: 1,
+    explanation: "Zombie freed by parent calling wait(). D-state freed by I/O completing, erroring (umount -f / timeout), or reboot. One's fate is upstream (parent), the other downstream (storage/network)."
+  },
+  {
+    section: "Section 3: Process Lifecycle",
+    question: "fork() fails with EAGAIN. Which limit is NOT a cause of this?",
+    options: [
+      "Per-user ulimit -u (RLIMIT_NPROC)",
+      "Kernel-wide /proc/sys/kernel/pid_max",
+      "cgroup pids.max (systemd TasksMax=)",
+      "System-wide fs.file-max"
+    ],
+    answer: 3,
+    explanation: "fs.file-max is a file descriptor limit — hitting it causes EMFILE on open(), not EAGAIN on fork(). fork() EAGAIN = RLIMIT_NPROC, pid_max, or cgroup pids.max."
+  },
+  {
+    section: "Section 3: Process Lifecycle",
+    question: "What happens to an orphan process whose parent dies?",
+    options: [
+      "It immediately becomes a zombie and waits to be reaped",
+      "It receives SIGHUP and typically exits",
+      "It is adopted by init/systemd (PID 1), which will reap it when it eventually exits",
+      "It continues running but leaks as an unreaped process forever"
+    ],
+    answer: 2,
+    explanation: "When a parent dies, its children are re-parented to init/systemd (PID 1). init automatically calls wait() and reaps them when they exit. Orphans are alive and functional — distinct from zombies."
+  },
+  {
+    section: "Section 3: Process Lifecycle",
+    question: "You have a zombie pileup. Why can't you just 'kill -9' the zombies?",
+    options: [
+      "kill -9 requires root and you're running as a user",
+      "Zombies are already dead — SIGKILL has nothing to kill. Fix the PARENT (make it call wait()) or restart it",
+      "kill -9 is blocked by kernel security policy for zombie processes",
+      "You must use kill -17 (SIGCHLD) to force zombie cleanup"
+    ],
+    answer: 1,
+    explanation: "Zombies are already dead — no process to kill. Each holds a PID slot. Fix: get the parent to call wait() (e.g., fix the bug or restart the parent — init then adopts and reaps the children)."
+  },
+
+  // ── Section 4: Signals ────────────────────────────────────────────────────
+  {
+    section: "Section 4: Signals",
+    question: "Which two signals can NEVER be caught, ignored, or blocked — and why does this matter?",
+    options: [
+      "SIGTERM (15) and SIGHUP (1) — apps must handle them",
+      "SIGKILL (9) and SIGSTOP (19) — kernel-enforced, guaranteeing you can always stop any process",
+      "SIGINT (2) and SIGQUIT (3) — terminals need guaranteed control",
+      "SIGSEGV (11) and SIGABRT (6) — crash signals can't be deferred"
+    ],
+    answer: 1,
+    explanation: "SIGKILL (9) and SIGSTOP (19) are kernel-enforced. No process can ever block them, making them the guaranteed 'last resort' for stopping runaway processes. Everything else is catchable."
+  },
+  {
+    section: "Section 4: Signals",
+    question: "ECS sends SIGTERM to your container on task shutdown. The app has no signal handler. What happens?",
+    options: [
+      "The default SIGTERM handler flushes buffers and exits cleanly",
+      "The container waits indefinitely for graceful shutdown",
+      "After stopTimeout (default 30s), ECS sends SIGKILL → exit 137, dropping in-flight requests",
+      "The container ignores SIGTERM and continues serving traffic"
+    ],
+    answer: 2,
+    explanation: "No SIGTERM handler = no graceful drain. ECS waits stopTimeout (default 30s), then SIGKILL → exit 137. Every deploy drops requests. Fix: trap SIGTERM, finish in-flight work, exit."
+  },
+  {
+    section: "Section 4: Signals",
+    question: "You run 'kill -9 <pid>' on a D-state process. What actually happens?",
+    options: [
+      "The signal is ignored because the process is in kernel space",
+      "The process is killed instantly regardless of its kernel state",
+      "The SIGKILL is queued and delivered the instant the blocking syscall returns",
+      "The kernel forcibly interrupts the syscall and kills the process"
+    ],
+    answer: 2,
+    explanation: "SIGKILL is queued, not ignored. It lands the moment the blocking syscall finishes (or errors). If the syscall never returns (truly hung NFS), the process is stuck until I/O resolves or you reboot."
+  },
+
+  // ── Section 5: D-State / Load Average ────────────────────────────────────
+  {
+    section: "Section 5: D-State / Load Average",
+    question: "Load average is 45 but CPU is 92% idle. What does this most likely indicate?",
+    options: [
+      "The system is healthy — load average is a lagging indicator",
+      "~45 processes are stuck in D-state waiting on I/O (e.g., a hung NFS mount)",
+      "The load average formula counts sleeping processes differently on this kernel",
+      "45 runnable processes are waiting for CPU time slots"
+    ],
+    answer: 1,
+    explanation: "Linux load average = runnable (R) + uninterruptible (D). High load + idle CPU = I/O bottleneck. Classic: one hung NFS mount blocks every process that touches a file on it. Check: ps aux | awk '$8~/^D/'"
+  },
+  {
+    section: "Section 5: D-State / Load Average",
+    question: "You have D-state processes piling up. How do you find what they're blocked on?",
+    options: [
+      "strace -p <pid> — it attaches and shows the blocked syscall",
+      "cat /proc/<pid>/stack or use the WCHAN column (ps -o pid,stat,wchan,cmd)",
+      "lsof -p <pid> to see open file handles",
+      "Check /proc/<pid>/status for the BlockedOn field"
+    ],
+    answer: 1,
+    explanation: "/proc/<pid>/stack shows the kernel call stack — what function the process is sleeping in. WCHAN column shows the same. Note: lsof itself can hang on dead NFS mounts — don't use it blindly."
+  },
+  {
+    section: "Section 5: D-State / Load Average",
+    question: "How can a D-state process be cleared? Pick the complete and correct answer.",
+    options: [
+      "kill -9 immediately removes it from the process table",
+      "Only by rebooting the system",
+      "I/O completes, I/O errors out (umount -f / storage timeout), or reboot — not by any signal",
+      "Sending SIGCONT (18) resumes it from kernel sleep"
+    ],
+    answer: 2,
+    explanation: "A D-state process only unblocks when: (1) the I/O completes, (2) the I/O errors (umount -f/umount -l forces unmount, or a storage timeout fires), or (3) reboot. Signals are queued but not delivered until the syscall returns."
+  },
+
+  // ── Section 6: Files, FDs, Inodes ─────────────────────────────────────────
+  {
+    section: "Section 6: Files, FDs, Inodes",
+    question: "'df' shows the disk is full but 'du' shows plenty of free space. What's happening?",
+    options: [
+      "The filesystem has a reserved-blocks percentage (tune2fs -m) consuming space",
+      "Deleted-but-open files: data blocks aren't freed until all file descriptors are closed",
+      "The filesystem's journal is consuming space not counted by du",
+      "There's a bind mount causing df to see the same space twice"
+    ],
+    answer: 1,
+    explanation: "When a process deletes a file but keeps an FD open, the data blocks remain allocated. du only sees directory entries (already gone). Find them: lsof | grep '(deleted)'. Fix: restart the holder process."
+  },
+  {
+    section: "Section 6: Files, FDs, Inodes",
+    question: "An application gets 'Too many open files'. What type of error is this, and how do you fix it permanently?",
+    options: [
+      "EAGAIN — a process limit; fix with ulimit -u or TasksMax=",
+      "EMFILE — a file descriptor limit; permanent fix: systemd LimitNOFILE= or /etc/security/limits.conf; ceiling: fs.file-max",
+      "ENOSPC — no space left on device; fix by clearing disk space",
+      "ENOMEM — out of memory; fix by adding RAM or swap"
+    ],
+    answer: 1,
+    explanation: "EMFILE = open() hit the per-process FD limit (ulimit -n). Band-aid: ulimit -n in the shell. Permanent: systemd LimitNOFILE= in the unit file, or /etc/security/limits.conf. System ceiling: fs.file-max. Common culprit: leaked sockets in CLOSE_WAIT."
+  },
+  {
+    section: "Section 6: Files, FDs, Inodes",
+    question: "What is the key difference between a hard link and a symlink?",
+    options: [
+      "Hard links store content inline; symlinks reference a path on disk",
+      "Hard link = another directory entry pointing to the same inode (can't cross filesystems or link dirs); symlink = tiny file containing a path (dangles if target deleted)",
+      "Hard links work across filesystems; symlinks do not",
+      "Symlinks preserve original permissions; hard links do not"
+    ],
+    answer: 1,
+    explanation: "Hard link: same inode, same data. Delete the original directory entry — data persists until link count = 0 AND FDs = 0. Symlink: a file containing a path. Delete the target → dangling symlink."
+  },
+  {
+    section: "Section 6: Files, FDs, Inodes",
+    question: "You can't create new files despite df showing 10 GB free. What should you check?",
+    options: [
+      "File permissions on the target directory",
+      "Whether the filesystem is mounted read-only",
+      "Inode exhaustion: df -i (millions of tiny files can exhaust inodes while disk space remains)",
+      "Whether the reserved block percentage is too high"
+    ],
+    answer: 2,
+    explanation: "'df -i' shows inode usage. A directory with millions of tiny temp/queue files can exhaust inodes entirely, causing 'No space left on device' even with free disk blocks. Fix: delete the tiny files."
+  },
+
+  // ── Section 7: DNS ────────────────────────────────────────────────────────
+  {
+    section: "Section 7: DNS Resolution Path",
+    question: "'dig example.com' works instantly but the application reports a DNS failure. What is the most likely explanation?",
+    options: [
+      "The DNS server is intermittently dropping non-dig queries",
+      "A firewall is blocking UDP 53 specifically for this application's UID",
+      "dig bypasses getaddrinfo()/nsswitch.conf and hits DNS directly — the libc/NSS resolution path is broken, not DNS itself",
+      "The application uses a different DNS port than the standard 53"
+    ],
+    answer: 2,
+    explanation: "dig talks to DNS directly. The app goes through getaddrinfo() → nsswitch.conf → /etc/hosts → systemd-resolved → resolv.conf. Any breakage in that chain is invisible to dig. Also check: JVM caches DNS forever by default."
+  },
+  {
+    section: "Section 7: DNS Resolution Path",
+    question: "On a modern Ubuntu/RHEL system, what typically handles DNS lookups at 127.0.0.53?",
+    options: [
+      "A local BIND9 instance installed by default",
+      "dnsmasq acting as a forwarding resolver",
+      "systemd-resolved — a stub resolver that caches and forwards to upstream resolvers",
+      "The application's own resolver library"
+    ],
+    answer: 2,
+    explanation: "systemd-resolved listens on 127.0.0.53 as a stub resolver. /etc/resolv.conf typically points here. It handles caching, DNSSEC, and per-link DNS configuration."
+  },
+
+  // ── Section 10: Terraform ─────────────────────────────────────────────────
+  {
+    section: "Section 10: Terraform",
+    question: "You're managing a list of 5 S3 buckets with 'count'. You remove the bucket at index 2. What happens?",
+    options: [
+      "Only the removed bucket is destroyed; the rest are unchanged",
+      "Terraform detects the removal and updates state cleanly",
+      "Buckets at indices 3 and 4 are destroyed and recreated with new addresses (count is positional)",
+      "An error is thrown because count doesn't support removal"
+    ],
+    answer: 2,
+    explanation: "count is positional. Remove index 2 from [0,1,2,3,4] → 3 becomes 2, 4 becomes 3 → Terraform destroys old 3 and 4, creates new ones. Use for_each for stable resource addresses keyed by name."
+  },
+  {
+    section: "Section 10: Terraform",
+    question: "Two engineers run 'terraform apply' at the same time. What prevents state corruption?",
+    options: [
+      "S3 object versioning locks the state file during writes",
+      "Terraform detects concurrent applies and fails gracefully",
+      "DynamoDB state locking: Terraform creates a lock record before apply, preventing concurrent applies",
+      "The .terraform.lock.hcl file serializes applies"
+    ],
+    answer: 2,
+    explanation: "DynamoDB state locking: before apply, TF writes a lock item. Second apply sees the lock and fails. Lock released on completion. This is why every remote backend must have DynamoDB locking — or a concurrent apply corrupts state."
+  },
+  {
+    section: "Section 10: Terraform",
+    question: "Someone manually changed an RDS instance class in the console. What does 'terraform plan' show, and what are your options?",
+    options: [
+      "Plan shows no changes — Terraform ignores out-of-band changes",
+      "Plan detects drift as a diff; options: let TF revert it, update code to match reality, or use ignore_changes if it's legitimately managed elsewhere",
+      "Terraform automatically imports the change and updates state",
+      "Plan fails with an error until you run terraform refresh manually"
+    ],
+    answer: 1,
+    explanation: "terraform plan refreshes state against reality and computes the diff. Drift shows as a proposed change. You choose: revert (apply), codify (update HCL), or exempt (ignore_changes lifecycle block). Plan output is your review artifact in CI."
+  },
+  {
+    section: "Section 10: Terraform",
+    question: "What is the safest way to rename a Terraform resource (e.g., rename aws_s3_bucket.old to aws_s3_bucket.new) without destroying it?",
+    options: [
+      "Hand-edit the state file JSON to update the address",
+      "Delete it from config, run apply to destroy, re-add with new name, run apply to recreate",
+      "terraform state mv aws_s3_bucket.old aws_s3_bucket.new — or add a 'moved' block for version-controlled refactors",
+      "Use terraform taint to mark it for recreation with the new name"
+    ],
+    answer: 2,
+    explanation: "terraform state mv updates the state address without touching the real resource. For team workflows, 'moved' blocks in .tf files are declarative and version-controlled. Never hand-edit the JSON state."
+  },
+
+  // ── Section 11: IAM ───────────────────────────────────────────────────────
+  {
+    section: "Section 11: IAM",
+    question: "In ECS, an engineer swaps the task execution role and the task role. What breaks?",
+    options: [
+      "Nothing — they're functionally identical",
+      "The ECS agent can no longer pull the container image from ECR or write CloudWatch logs; the app's S3 calls start failing with the wrong permissions",
+      "Only the CloudWatch logs break",
+      "The app can't reach the RDS database"
+    ],
+    answer: 1,
+    explanation: "Execution role = ECS agent operations (pull ECR image, push CW logs, fetch Secrets Manager/SSM). Task role = your application's AWS API calls. Swapping them breaks both — this is a common senior-filter question."
+  },
+  {
+    section: "Section 11: IAM",
+    question: "Cross-account role assumption is failing with AccessDenied even though the permission policy looks correct. What should you check first?",
+    options: [
+      "Whether VPC peering is set up between the accounts",
+      "The trust policy of the target role — it must explicitly list the source account/role as an allowed principal",
+      "Whether Organizations SCPs are blocking role assumption globally",
+      "Whether the IAM user has MFA enabled"
+    ],
+    answer: 1,
+    explanation: "Every role has TWO policy types: permission policy (what it can do) and trust policy (who can assume it — the Principal block). Cross-account failures are almost always the trust policy missing the source account or role ARN."
+  },
+  {
+    section: "Section 11: IAM",
+    question: "Why does IMDSv2 matter for EC2 security, and what attack does it mitigate?",
+    options: [
+      "IMDSv2 encrypts metadata traffic to prevent eavesdropping",
+      "IMDSv2 requires session tokens + hop-limit enforcement, blocking SSRF attacks from stealing instance credentials via the metadata service",
+      "IMDSv2 requires IAM credentials to access metadata, eliminating anonymous access",
+      "IMDSv2 rate-limits metadata requests to prevent DoS against the metadata service"
+    ],
+    answer: 1,
+    explanation: "IMDSv2 requires a PUT request to get a session token first (hop-limit=1 blocks SSRF from proxied requests). IMDSv1 had no authentication — a single GET to 169.254.169.254 from any SSRF could steal instance credentials."
+  },
+
+  // ── Section 12: EC2 ───────────────────────────────────────────────────────
+  {
+    section: "Section 12: EC2",
+    question: "An EC2 instance passes its system status check but fails its instance status check. What does this tell you?",
+    options: [
+      "AWS's host hardware has failed — stop/start the instance to migrate",
+      "The problem is in your OS (kernel panic, full disk, bad network config, etc.) — AWS's infrastructure is fine",
+      "The instance is being terminated by AWS for maintenance",
+      "The AMI is corrupted and the instance needs to be rebuilt"
+    ],
+    answer: 1,
+    explanation: "System check failure = AWS's host problem (stop/start migrates hardware). Instance check failure = your OS problem (kernel panic, full disk, misconfigured network). You own the fix for instance check failures."
+  },
+  {
+    section: "Section 12: EC2",
+    question: "What is the key difference between Security Groups and NACLs?",
+    options: [
+      "Security Groups apply at the subnet level; NACLs apply to individual instances",
+      "Security Groups are stateful (return traffic auto-allowed), instance-level, allow-only; NACLs are stateless (both directions needed), subnet-level, allow+deny",
+      "NACLs evaluate rules in order; Security Groups evaluate all rules",
+      "Security Groups support IPv6; NACLs are IPv4 only"
+    ],
+    answer: 1,
+    explanation: "The stateful/stateless distinction is the answer interviewers want. SGs: stateful (established connection return traffic automatically allowed), instance-level, allow-only. NACLs: stateless (explicit rules for both directions), subnet-level, allow+deny."
+  },
+
+  // ── Section 13: ECS ───────────────────────────────────────────────────────
+  {
+    section: "Section 13: ECS",
+    question: "An ECS Fargate task is stuck in PENDING forever. What are the most likely causes?",
+    options: [
+      "The task's IAM role lacks permissions",
+      "Subnet/ENI exhaustion, inability to pull the image (execution role / ECR / NAT path), or service limits",
+      "The ALB target group health check is failing",
+      "The task definition CPU/memory values are invalid"
+    ],
+    answer: 1,
+    explanation: "Fargate PENDING stuck: subnet IP/ENI exhaustion, can't pull image (execution role missing ECR permissions, no NAT gateway, VPC endpoint not set up). Check stoppedReason on the task and CloudWatch logs for the ECS agent."
+  },
+  {
+    section: "Section 13: ECS",
+    question: "In ECS awsvpc networking mode, ALB health checks are failing even though the app is responding fine locally. What should you check?",
+    options: [
+      "Whether the ALB and tasks are in the same VPC",
+      "The Security Group on the task — it must allow inbound traffic from the ALB's SG on the container port",
+      "Whether the ALB is internet-facing vs internal",
+      "Whether the target group uses IP or instance target type"
+    ],
+    answer: 1,
+    explanation: "In awsvpc mode each task gets its own ENI and SG. The ALB reaches tasks via their ENI. The task's SG must allow inbound from the ALB's SG on the container port. Also check healthCheckGracePeriod if the app is slow to start."
+  },
+
+  // ── Section 14: RDS ───────────────────────────────────────────────────────
+  {
+    section: "Section 14: RDS",
+    question: "Your application needs high availability on RDS. Someone suggests adding a Read Replica. Why is this the wrong answer?",
+    options: [
+      "Read Replicas don't support PostgreSQL",
+      "Read Replicas use asynchronous replication — there can be replication lag, and failover is NOT automatic. Multi-AZ provides synchronous replication and automatic failover",
+      "Read Replicas double the cost without any benefit",
+      "Read Replicas can't be promoted to primary"
+    ],
+    answer: 1,
+    explanation: "Multi-AZ = AVAILABILITY: synchronous standby, automatic failover in ~60-120s (DNS CNAME flips). Read Replicas = SCALE: async reads, observable lag, manual promotion for DR. They serve different purposes."
+  },
+  {
+    section: "Section 14: RDS",
+    question: "A Lambda-heavy workload is exhausting RDS max_connections. Raising max_connections on a larger instance class is a temporary fix. What is the durable solution?",
+    options: [
+      "Switch to Aurora Serverless for auto-scaling connections",
+      "Use RDS Proxy (or PgBouncer) for connection pooling in front of RDS",
+      "Increase max_connections in the parameter group and reboot",
+      "Add Read Replicas to distribute the connection load"
+    ],
+    answer: 1,
+    explanation: "Lambda/ECS open a new connection per invocation and don't reuse them. RDS Proxy sits in front of RDS, maintains a warm connection pool, and multiplexes many app connections onto fewer DB connections. max_connections is a band-aid."
+  },
+
+  // ── Section 15: SRE Layer ─────────────────────────────────────────────────
+  {
+    section: "Section 15: The SRE Layer",
+    question: "What are the four golden signals of site reliability monitoring?",
+    options: [
+      "CPU utilization, memory usage, disk I/O, network throughput",
+      "Latency, traffic, errors, saturation",
+      "Availability, reliability, MTTR, MTTD",
+      "P99 latency, error rate, deployment frequency, lead time"
+    ],
+    answer: 1,
+    explanation: "The four golden signals: Latency (how long requests take), Traffic (how much demand), Errors (rate of failures), Saturation (how 'full' a resource is). Alert on symptoms (SLO burn), not causes (CPU%)."
+  },
+  {
+    section: "Section 15: The SRE Layer",
+    question: "The error budget is nearly exhausted for the quarter. How does this change what the team works on?",
+    options: [
+      "The team accelerates feature work to ship before the budget resets",
+      "Feature development freezes and the team focuses on reliability improvements until the budget recovers",
+      "SLO targets are temporarily lowered to restore the budget",
+      "Incidents are reclassified as planned maintenance to preserve budget"
+    ],
+    answer: 1,
+    explanation: "Error budget = 1 − SLO. Budget remaining → ship features. Budget burned → reliability work takes priority (freeze features). This turns the dev-vs-ops argument into math with shared incentives."
+  },
+  {
+    section: "Section 15: The SRE Layer",
+    question: "What distinguishes an SLI, SLO, and SLA?",
+    options: [
+      "They're three names for the same metric at different granularities",
+      "SLI = measurement (p99 latency, success rate); SLO = target (99.9% success over 30d); SLA = external contract with financial penalties",
+      "SLI is the alert threshold; SLO is the pager policy; SLA is the customer-facing status page",
+      "SLO is stricter than SLA; SLI is the internal version of SLO"
+    ],
+    answer: 1,
+    explanation: "SLI: the metric you measure (e.g., request success rate). SLO: the target you set on that metric (e.g., ≥ 99.9% over 30 days). SLA: the contract with customers that includes penalties when SLOs are missed."
+  },
+
+  // ── Section 16: Containers ────────────────────────────────────────────────
+  {
+    section: "Section 16: Containers Under the Hood",
+    question: "What are the three Linux kernel features that make a container work?",
+    options: [
+      "Hypervisor isolation, virtual network stack, disk image snapshots",
+      "Namespaces (what the process sees), cgroups (what it can use), layered filesystem / overlayfs (the image)",
+      "chroot (filesystem), iptables (network), ulimits (resources)",
+      "KVM (CPU isolation), QEMU (device emulation), virtio (I/O)"
+    ],
+    answer: 1,
+    explanation: "Namespaces: isolate what the process sees (pid, net, mnt, uts, ipc, user). cgroups: limit what it can use (CPU, memory, pids). overlayfs: layered read-only image + writable layer. Same kernel as the host — not a VM."
+  },
+  {
+    section: "Section 16: Containers Under the Hood",
+    question: "Your containerized app forks child processes but they're accumulating as zombies. What's the fix?",
+    options: [
+      "Increase the pids cgroup limit to allow more processes",
+      "Use tini as PID 1 (docker --init or ECS initProcessEnabled) — it's a tiny init that properly reaps zombie children",
+      "Add SIGCHLD handlers to every forked child",
+      "Use --pid=host to share the host PID namespace and let the host init reap"
+    ],
+    answer: 1,
+    explanation: "Your app as PID 1 inherits init's zombie-reaping duty but most apps don't implement wait(). tini (docker --init / ECS initProcessEnabled) is a minimal init that just reaps children. This also fixes the 'no default SIGTERM handler for PID 1' problem."
+  },
+
+  // ── Section 17: Kubernetes ────────────────────────────────────────────────
+  {
+    section: "Section 17: Kubernetes Core",
+    question: "Liveness probe is failing on your pods. What happens, and what's the classic mistake?",
+    options: [
+      "Pods are removed from Service endpoints but not restarted — traffic stops going to them",
+      "Pods are restarted by kubelet. Classic mistake: checking a dependency (database) in liveness — a DB outage cascades into a cluster-wide restart storm of perfectly healthy pods",
+      "The Deployment is rolled back to the previous version",
+      "The HPA scales up replicas to compensate for the failing pods"
+    ],
+    answer: 1,
+    explanation: "Liveness failure → kubelet RESTARTS the container. Readiness failure → pod removed from Service endpoints (no restart). Liveness should only check 'am I deadlocked?' — never 'is my database up?' That's a readiness concern."
+  },
+  {
+    section: "Section 17: Kubernetes Core",
+    question: "What happens when a pod exceeds its CPU limit vs. its memory limit?",
+    options: [
+      "Both CPU and memory over-limit result in the pod being OOMKilled",
+      "Both CPU and memory over-limit result in throttling with no pod restart",
+      "CPU over-limit → throttled (slowed, not killed); memory over-limit → OOMKilled (exit 137, container dies)",
+      "CPU over-limit → pod evicted; memory over-limit → container restarted in-place"
+    ],
+    answer: 2,
+    explanation: "CPU is compressible: going over limit → throttled by the cgroup, not killed. Memory is not compressible: going over limit → OOMKilled (exit 137). This asymmetry catches people off guard — CPU throttling is silent."
+  },
+  {
+    section: "Section 17: Kubernetes Core",
+    question: "What is IRSA in EKS, and why is it preferred over node-level IAM roles?",
+    options: [
+      "IRSA = Instance Role for Service Accounts — it's just IAM instance profiles renamed for K8s",
+      "IRSA = IAM Roles for Service Accounts — annotate a K8s SA with an IAM role, and pods using that SA get scoped AWS credentials. No node-wide credentials needed (least privilege per pod)",
+      "IRSA is a way to share IAM users across multiple EKS clusters",
+      "IRSA = Internal Role-based Service Authentication — a Kubernetes-native RBAC mechanism"
+    ],
+    answer: 1,
+    explanation: "IRSA: annotate a Kubernetes ServiceAccount with an IAM role ARN. Pods using that SA get temporary AWS credentials scoped to that role via a projected token. Node-level roles give all pods on the node the same permissions — IRSA gives each workload exactly what it needs."
+  },
+  {
+    section: "Section 17: Kubernetes Core",
+    question: "A Kubernetes Deployment was updated and pods are crash-looping. How do you instantly rollback?",
+    options: [
+      "kubectl delete deployment <name> and reapply the old manifest",
+      "kubectl rollout undo deployment/<name> — instantly reverts to the previous ReplicaSet",
+      "kubectl scale deployment <name> --replicas=0 then back to the previous count",
+      "Edit the Deployment's image tag back to the previous version manually"
+    ],
+    answer: 1,
+    explanation: "kubectl rollout undo deployment/<name> switches traffic back to the previous ReplicaSet instantly. Each Deployment rollout creates a new ReplicaSet — undo just changes which RS is active. No image tag lookup needed."
+  },
+
+  // ── Section 18: K8s Debugging ─────────────────────────────────────────────
+  {
+    section: "Section 18: K8s Debugging Playbook",
+    question: "A pod is in CrashLoopBackOff. 'kubectl logs <pod>' shows nothing useful. What should you run instead?",
+    options: [
+      "kubectl describe pod <pod> — the Events section has the crash details",
+      "kubectl logs <pod> --previous — shows the terminated container's logs before the latest restart",
+      "kubectl exec <pod> -- journalctl -xe",
+      "kubectl get events | grep <pod>"
+    ],
+    answer: 1,
+    explanation: "kubectl logs <pod> shows the CURRENT running container's logs — which just started and may be empty. --previous shows the crashed container's output. This is the most common debugging mistake in CrashLoopBackOff."
+  },
+  {
+    section: "Section 18: K8s Debugging Playbook",
+    question: "A pod is Pending. 'kubectl logs' returns 'Error from server: container not created'. What's the right next step?",
+    options: [
+      "Wait — the container is still initializing",
+      "kubectl describe pod <pod> — the Events section will say exactly why the scheduler can't place it (e.g., 'Insufficient memory', 'no nodes match taints')",
+      "kubectl get nodes to see if any nodes are NotReady",
+      "Check the application's ConfigMap for misconfiguration"
+    ],
+    answer: 1,
+    explanation: "Pending = scheduler hasn't placed the pod. Logs are empty because no container has run. kubectl describe pod shows Events like '0/3 nodes available: 3 Insufficient memory.' or '...didn't match node affinity.' The Events section is always the first stop."
+  },
+  {
+    section: "Section 18: K8s Debugging Playbook",
+    question: "A Node shows NotReady. After the K8s-level checks, what layer should you investigate next?",
+    options: [
+      "The Ingress controller configuration",
+      "The cluster's etcd health",
+      "Linux fundamentals on the node itself: kubelet logs, dmesg, D-states, OOM events, disk pressure",
+      "The pod's resource requests causing scheduler problems"
+    ],
+    answer: 2,
+    explanation: "The closing line of K8s debugging: 'If the node is sick, I'm back to Linux fundamentals.' Check: journalctl -u kubelet, dmesg for OOM/I/O errors, df for disk pressure, ps for D-states. Kubernetes is a scheduler on top of everything in Linux Part 1."
+  },
+  {
+    section: "Section 18: K8s Debugging Playbook",
+    question: "Services have a selector but 'kubectl get endpoints <svc-name>' shows no addresses. What's wrong?",
+    options: [
+      "The Service port doesn't match any container port",
+      "No pods with matching labels exist, OR all matching pods have failing Readiness probes (both remove pods from endpoints)",
+      "The Service type is ClusterIP and it's not accessible externally",
+      "The kube-proxy on the nodes needs to be restarted"
+    ],
+    answer: 1,
+    explanation: "Empty endpoints = no pods match the selector, OR pods exist but Readiness is failing (readiness failure removes pods from endpoints without restarting them). Check: kubectl get pods -l <selector> and kubectl describe pod for readiness probe failures."
+  }
+];
+
+// ── Quiz State ───────────────────────────────────────────────────────────────
+let questions = [];
+let current = 0;
+let score = 0;
+let results = [];
+let answered = false;
+
+function shuffle(arr) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+function startQuiz() {
+  questions = shuffle(ALL_QUESTIONS);
+  current = 0;
+  score = 0;
+  results = [];
+  document.getElementById('start-screen').style.display = 'none';
+  document.getElementById('score-screen').style.display = 'none';
+  document.getElementById('quiz-screen').style.display = 'block';
+  renderQuestion();
+}
+
+function renderQuestion() {
+  answered = false;
+  const q = questions[current];
+  const total = questions.length;
+
+  document.getElementById('q-counter').textContent = `Question ${current + 1} of ${total}`;
+  document.getElementById('score-live').textContent = `Score: ${score}`;
+  document.getElementById('progress-fill').style.width = `${(current / total) * 100}%`;
+  document.getElementById('section-badge').textContent = q.section;
+  document.getElementById('question-text').textContent = q.question;
+
+  const labels = ['A', 'B', 'C', 'D'];
+  const container = document.getElementById('options-container');
+  container.innerHTML = '';
+
+  const shuffledIndices = shuffle([0, 1, 2, 3]);
+  const correctOriginalIndex = q.answer;
+  let correctShuffledPos = -1;
+
+  shuffledIndices.forEach((origIdx, pos) => {
+    if (origIdx === correctOriginalIndex) correctShuffledPos = pos;
+    const btn = document.createElement('button');
+    btn.className = 'option-btn';
+    btn.dataset.origIdx = origIdx;
+    btn.innerHTML = `<span class="option-label">${labels[pos]}</span><span>${q.options[origIdx]}</span>`;
+    btn.addEventListener('click', () => handleAnswer(btn, origIdx === correctOriginalIndex, q));
+    container.appendChild(btn);
+  });
+
+  const fb = document.getElementById('feedback');
+  fb.className = 'feedback';
+  fb.textContent = '';
+
+  document.getElementById('next-btn').style.display = 'none';
+}
+
+function handleAnswer(btn, isCorrect, q) {
+  if (answered) return;
+  answered = true;
+
+  const allBtns = document.querySelectorAll('.option-btn');
+  allBtns.forEach(b => {
+    b.disabled = true;
+    const origIdx = parseInt(b.dataset.origIdx);
+    if (origIdx === q.answer) {
+      b.classList.add('correct');
+    } else if (b === btn && !isCorrect) {
+      b.classList.add('wrong');
+    } else {
+      b.classList.add('dimmed');
+    }
+  });
+
+  const fb = document.getElementById('feedback');
+
+  if (isCorrect) {
+    score++;
+    fb.className = 'feedback correct-fb show';
+    fb.innerHTML = `<strong>Correct!</strong>${q.explanation}`;
+  } else {
+    fb.className = 'feedback wrong-fb show';
+    fb.innerHTML = `<strong>Not quite.</strong>${q.explanation}<div class="study-ref">📖 Review: <span>${q.section}</span> in the cheatsheet</div>`;
+  }
+
+  document.getElementById('score-live').textContent = `Score: ${score}`;
+  results.push({ q, correct: isCorrect });
+
+  const nextBtn = document.getElementById('next-btn');
+  nextBtn.style.display = 'inline-block';
+  nextBtn.textContent = current + 1 < questions.length ? 'Next →' : 'See Results';
+}
+
+function nextQuestion() {
+  current++;
+  if (current < questions.length) {
+    renderQuestion();
+  } else {
+    showScore();
+  }
+}
+
+function showScore() {
+  document.getElementById('quiz-screen').style.display = 'none';
+  document.getElementById('score-screen').style.display = 'block';
+
+  const total = questions.length;
+  const pct = Math.round((score / total) * 100);
+
+  document.getElementById('final-score').textContent = `${score}/${total}`;
+
+  const grade = pct >= 90 ? '🏆 Outstanding — you\'re ready to interview.' :
+                pct >= 75 ? '✅ Strong — a few topics to review.' :
+                pct >= 60 ? '📚 Getting there — hit the weak sections.' :
+                            '🔁 Keep studying — you\'ve got this.';
+  document.getElementById('score-grade').textContent = grade;
+
+  const breakdown = document.getElementById('score-breakdown');
+  breakdown.innerHTML = '';
+  results.forEach(({ q, correct }) => {
+    const div = document.createElement('div');
+    div.className = `breakdown-item ${correct ? 'pass' : 'fail'}`;
+    div.innerHTML = `
+      <div class="breakdown-dot ${correct ? 'pass' : 'fail'}"></div>
+      <span class="section-tag">${q.section.replace('Section ', '§').split(':')[0]}</span>
+      <span style="color:var(--muted); flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap">${q.question}</span>
+    `;
+    breakdown.appendChild(div);
+  });
+}
+
+function restartQuiz() {
+  document.getElementById('score-screen').style.display = 'none';
+  startQuiz();
+}
+
+// Populate sections list on start screen
+const sectionNames = [...new Set(ALL_QUESTIONS.map(q => q.section))];
+const sl = document.getElementById('sections-list');
+sectionNames.forEach(s => {
+  const sp = document.createElement('span');
+  sp.textContent = s;
+  sl.appendChild(sp);
+});
+</script>
+</body>
+</html>
