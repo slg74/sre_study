@@ -242,3 +242,267 @@ Say it like: *"A container is a process with namespaces for isolation, cgroups f
 | **Evictions** | Node memory/disk pressure → BestEffort/Burstable pods killed | `kubectl get events`; fix requests/limits honesty |
 
 **The closing line for any K8s debugging answer:** "...and if the node itself is sick, I'm back to Linux fundamentals — kubelet logs, dmesg, D-states, disk pressure. Kubernetes is a scheduler on top of everything in Part 1."
+
+---
+---
+
+# Part 4 — Identity Management & PKI
+
+## 19. Identity: OAuth 2.0, OIDC, SAML, LDAP, Okta/OneLogin
+
+### The One-Sentence Separator (say this first every time)
+- **OAuth 2.0** = *authorization* — "what can this app access on my behalf?"
+- **OIDC (OpenID Connect)** = *authentication* — "who is this user?" (OAuth 2.0 + identity layer)
+- **SAML 2.0** = *both auth + authz in one XML assertion* — older enterprise standard, federation-first
+- **LDAP** = *directory protocol* — query/modify a directory (users, groups, attributes) over the network
+
+---
+
+### OAuth 2.0 — The Mental Model
+
+**Four roles:**
+| Role | What it is |
+|---|---|
+| Resource Owner | The user granting access |
+| Client | The application requesting access |
+| Authorization Server | Issues tokens after consent (Okta, Cognito, Auth0) |
+| Resource Server | The API holding the protected data |
+
+**Grant types — know these cold:**
+
+| Grant | Use case | Notes |
+|---|---|---|
+| **Authorization Code + PKCE** | Web apps, SPAs, mobile | **Modern default for all clients.** PKCE replaces client secret for public clients |
+| **Client Credentials** | Machine-to-machine (M2M) | No user involved — service accounts, crons, backend APIs |
+| **Device Authorization** | Smart TVs, CLIs | User approves on secondary device; device polls for token |
+| ~~Implicit~~ | ~~SPAs (old)~~ | **Obsolete.** Tokens leaked in URL fragment. Removed in OAuth 2.1 |
+| ~~Resource Owner Password~~ | ~~Legacy~~ | **Never use.** Client sees user's password, breaks MFA/SSO |
+
+**PKCE mechanics (code_verifier / code_challenge):**
+1. Client generates a random `code_verifier`, hashes it → `code_challenge` (SHA-256)
+2. Sends `code_challenge` with the auth request
+3. Auth server stores it; after redirect, client proves it holds the original `code_verifier`
+4. Even if the auth code is intercepted, attacker can't exchange it without `code_verifier`
+
+**Token types:**
+- **Access token** — short-lived (5–60 min), presented to Resource Server. Opaque (server must call `/introspect`) or **JWT** (self-contained, validated locally with the public key — no introspect call needed, but can't be revoked until expiry)
+- **Refresh token** — long-lived, stored securely server-side. Exchanges for new access tokens. Use **refresh token rotation** (invalidate on use) to detect theft
+- **ID token** — OIDC only. JWT containing user identity claims (sub, email, name). Client reads it; never send it to an API
+
+**Security pitfalls (senior-filter answers):**
+- **state parameter** = random nonce tied to the session. Prevents CSRF on the redirect callback. Server must verify it matches what was sent
+- **redirect_uri** must be pre-registered and matched exactly (not prefix) — prevents open-redirector attacks
+- **Never store tokens in localStorage** — XSS-accessible. Use in-memory or `HttpOnly` cookies via a backend-for-frontend (BFF)
+- **JWT algorithm confusion** — always whitelist `alg` on your server; never trust the `alg` header. `alg: none` attack strips signature
+
+**OAuth 2.1 changes (know this for 2026 interviews):** PKCE required for all auth-code flows, Implicit removed, Resource Owner Password removed, bearer tokens banned from query strings.
+
+---
+
+### OIDC — What it adds
+
+- Standardises the **ID token** (JWT with `sub`, `iss`, `aud`, `exp`, `iat`, `nonce`)
+- Adds the **UserInfo endpoint** (`GET /userinfo` with access token → extra profile claims)
+- Adds **discovery** (`/.well-known/openid-configuration`) so clients auto-configure endpoints and keys
+- **Nonce** in auth request → ID token; prevents replay attacks
+- **ACR / AMR claims** — `acr` = authentication class reference (strength level); `amr` = methods used (password, mfa, hwk). Use `acr_values` in the auth request to demand MFA
+
+---
+
+### SAML 2.0 — Enterprise SSO
+
+**Flow (SP-initiated, most common):**
+1. User hits Service Provider (SP) — e.g. Salesforce, AWS console, a SaaS app
+2. SP redirects to Identity Provider (IdP) — Okta, OneLogin, AD FS
+3. User authenticates at IdP
+4. IdP issues a signed **SAML Assertion** (XML) → posted back to SP's Assertion Consumer Service (ACS) URL
+5. SP validates signature, extracts attributes, creates session
+
+**Key concepts:**
+- **Assertion** = the signed XML blob containing: authentication statement (who), attribute statement (email, groups, roles), authorisation decision
+- **Metadata exchange** — SP and IdP share an XML metadata file containing certificates, endpoints, and entity IDs. This is how trust is established (import each other's metadata)
+- **SP-initiated vs IdP-initiated** — SP-initiated is more secure (SP generates a signed AuthnRequest with a random ID it can verify). IdP-initiated has no AuthnRequest to validate — CSRF risk
+- **Signature validation** — SP must verify the assertion signature against the IdP's signing certificate. If you skip this, anyone can forge an assertion
+
+**SAML vs OIDC — when to choose:**
+| | SAML | OIDC |
+|---|---|---|
+| Format | XML | JSON/JWT |
+| Age | 2005, enterprise-legacy | 2014, modern |
+| Best for | Legacy enterprise apps, Windows/AD ecosystems | New apps, APIs, mobile, microservices |
+| Token format | Assertions (XML, large) | JWTs (compact) |
+| Okta/OneLogin | Support both | Prefer OIDC for new integrations |
+
+---
+
+### Okta & OneLogin — SRE Operations Layer
+
+Both are cloud IdPs that act as the authoritative **identity broker** — they federate upstream directories (AD, LDAP, HR systems) and issue SAML/OIDC tokens downstream to apps.
+
+**Key concepts for SRE interviews:**
+- **Universal Directory / LDAP Interface** — Okta/OneLogin can masquerade as an LDAP endpoint for legacy apps that only speak LDAP
+- **SCIM (System for Cross-domain Identity Management)** — REST API standard for automating **user provisioning and deprovisioning**. When HR adds/removes a user in Workday → SCIM pushes to Okta → Okta SCIM-provisions the user in downstream apps. Without SCIM: manual offboarding = security risk
+- **Just-In-Time (JIT) Provisioning** — create the user account in the SP on first successful SAML login, using attributes from the assertion. Simpler than SCIM but can't deprovision
+- **MFA Policies** — step-up auth (require MFA for sensitive apps), adaptive MFA (risk-based: new device/country triggers MFA), phishing-resistant (FIDO2/WebAuthn hardware keys)
+- **Lifecycle Management** — automate joiners/movers/leavers. Leaver flow: HR terminates → Okta suspends (not deletes) → all app sessions revoked via OIDC back-channel logout or SAML SLO
+- **Okta FastPass / Device Trust** — require managed device certificate before granting access. Ties into MDM (Jamf, Intune)
+
+**Debugging SSO failures (senior-filter answers):**
+- SAML assertion failures: use a browser SAML tracer extension to decode the base64 assertion; check `NotBefore`/`NotOnOrAfter` (clock skew!), audience restriction, and signature
+- `403 Access Denied` after successful SSO: user authenticated but SP's attribute-based authz failed — check group/role attributes in the assertion
+- Session loops: SP doesn't trust the assertion, keeps redirecting back to IdP — usually a certificate mismatch or wrong ACS URL
+
+---
+
+### LDAP — Directory Protocol
+
+**Structure:**
+- **DIT (Directory Information Tree)** — hierarchical tree of entries
+- **DN (Distinguished Name)** — unique path to an entry: `CN=John Smith,OU=Engineering,DC=example,DC=com`
+  - `CN` = Common Name, `OU` = Organizational Unit, `DC` = Domain Component
+- **Attributes** — each entry has typed attributes: `mail`, `uid`, `memberOf`, `userPassword`, `objectClass`
+- **objectClass** — defines what attributes an entry can/must have (schema enforcement)
+
+**Operations:** bind (authenticate), search (query), add, modify, delete, compare, unbind
+
+**Ports:**
+- `389` — LDAP (cleartext/StartTLS)
+- `636` — LDAPS (TLS from the start)
+- `3268` / `3269` — AD Global Catalog (plain / TLS)
+
+**Bind types:**
+- **Simple bind** — DN + password in cleartext → always use StartTLS or LDAPS
+- **SASL bind** — pluggable auth (Kerberos/GSSAPI most common in AD environments)
+- **Anonymous bind** — no credentials; most directories restrict what anonymous can read
+
+**Common LDAP in SRE contexts:**
+- App authenticates users against LDAP: `bind as service account → search for user by uid → bind as user with provided password → success/fail`
+- **Service account (bind DN)** — read-only account the app uses to search the directory. Rotate its password → update everywhere or you get `49 Invalid Credentials` floods
+- **LDAP referrals** — a DC forwards the client to another server. Can cause app hangs if the client doesn't follow them (set `referrals=off` in most app configs)
+- `ldapsearch` for debugging: `ldapsearch -H ldap://dc.example.com -D "CN=svc,DC=example,DC=com" -W -b "DC=example,DC=com" "(uid=jsmith)"`
+
+**LDAP vs Active Directory:**
+LDAP is the *protocol*; AD is Microsoft's *directory service* that uses LDAP as its access protocol plus Kerberos for authentication, DNS for locating DCs, and its own replication protocol.
+
+---
+
+## 20. PKI, TLS/SSL Certificates
+
+### The TLS Handshake (TLS 1.3, simplified)
+
+```
+Client                          Server
+  |-- ClientHello (TLS ver, ciphers, key_share) -->|
+  |<-- ServerHello (chosen cipher, key_share) ------|
+  |<-- Certificate (server's cert chain) ----------|
+  |<-- CertificateVerify (signed with private key) |
+  |<-- Finished (MAC) -----------------------------|
+  |-- Finished (MAC) ------------------------------>|
+  |======= Application Data (encrypted) ===========|
+```
+
+Key points:
+- TLS 1.3 eliminates the RSA key exchange (no more "decrypt session key with private key") — **ephemeral Diffie-Hellman (DHE/ECDHE) only** → mandatory Perfect Forward Secrecy
+- The server's private key is only used to *sign* the key exchange, not encrypt it
+- **1-RTT** handshake (vs TLS 1.2's 2-RTT). **0-RTT** resumption available but replay-attack risk — don't use for non-idempotent requests
+
+---
+
+### Certificate Chain (Root → Intermediate → Leaf)
+
+```
+Root CA (self-signed, in browser/OS trust store)
+  └── Intermediate CA (signed by Root)
+        └── Leaf/Server Certificate (signed by Intermediate, issued to your domain)
+```
+
+- **Root CA** private key is kept **offline in an HSM** — never used for day-to-day signing. If a root CA is compromised, every certificate it ever issued is untrusted
+- **Intermediate CA** does the actual signing. Isolates the root — a compromised intermediate can be revoked without rotating the root
+- **Chain of trust** — client verifies: leaf cert signed by intermediate? Intermediate signed by root? Root in trust store? All not expired or revoked?
+- **Missing intermediate** = the most common `SSL_ERROR_RX_RECORD_TOO_LONG` / `unable to verify certificate chain` error. Your server must send the full chain (leaf + intermediates, not root)
+
+---
+
+### Certificate Types — Validation Levels
+
+| Type | Verification | Use case |
+|---|---|---|
+| **DV (Domain Validated)** | CA only confirms domain control (DNS/HTTP challenge) | Fast/free (Let's Encrypt), internal services, APIs |
+| **OV (Organization Validated)** | CA verifies the org is real | Public-facing business sites |
+| **EV (Extended Validation)** | Full legal/physical verification | Banks, e-commerce (green bar, largely obsolete now) |
+| **Wildcard** (`*.example.com`) | One cert covers all first-level subdomains | Convenient but one compromise = all subdomains at risk |
+| **SAN (Subject Alternative Name)** | One cert covers multiple explicit domains | Modern standard — Chrome ignores CN, only reads SAN |
+
+---
+
+### Key Concepts — Senior-Filter Answers
+
+**SNI (Server Name Indication):**
+Client sends the *target hostname* in the TLS ClientHello (before the certificate is sent), allowing one IP to host many TLS sites. Without SNI: one IP = one cert. With SNI: ALBs, nginx, Cloudflare host thousands of certs per IP. Older clients (IE on WinXP) don't support SNI — irrelevant now but good to mention.
+
+**mTLS (Mutual TLS):**
+Both sides present certificates. Server authenticates client, client authenticates server. Standard in:
+- Service meshes (Istio/Linkerd) — every service-to-service call is mTLSed
+- Zero-trust internal networks
+- Client certificate auth for API consumers
+
+**Perfect Forward Secrecy (PFS):**
+Ephemeral key exchange (DHE/ECDHE) means each session uses a unique session key derived from a fresh DH exchange. Recording encrypted traffic today and stealing the server's private key tomorrow won't decrypt past sessions. TLS 1.3 mandates this; TLS 1.2 requires it only if you pick ephemeral cipher suites.
+
+**OCSP & OCSP Stapling:**
+- **OCSP (Online Certificate Status Protocol)** — client queries CA's OCSP responder to check if cert is revoked. Problem: adds latency, leaks browsing history to CA, OCSP responder downtime breaks things
+- **OCSP Stapling** — server pre-fetches and caches a signed OCSP response, "staples" it to the TLS handshake. Client gets revocation status without contacting the CA. *Always enable OCSP stapling on internet-facing servers.*
+
+**Certificate Pinning:**
+Hardcode the expected cert or public key hash in the client. HTTPS with pinning: even if an attacker gets a valid CA-signed cert for your domain (rogue CA), the pinned client rejects it. Risk: pin the wrong cert → users locked out. Use `backup pins` and a short `max-age`.
+
+**HSM (Hardware Security Module):**
+Physical device that stores private keys and performs crypto operations. Key never leaves the HSM. Required for root CAs and high-security environments. Cloud equivalents: AWS CloudHSM, GCP Cloud HSM.
+
+---
+
+### Common Certificate Errors & Debugging
+
+| Error | Cause | Fix |
+|---|---|---|
+| `CERTIFICATE_VERIFY_FAILED` | CA not in trust store, or self-signed | Add CA to trust store, or use a public CA |
+| `SSL_ERROR_BAD_CERT_DOMAIN` / CN mismatch | Cert issued for wrong domain, or SAN missing | Reissue cert with correct SANs |
+| `CERTIFICATE_EXPIRED` | `NotAfter` in the past | Renew; automate with ACME/Let's Encrypt |
+| `incomplete chain` / `unable to verify` | Server not sending intermediate cert | Configure server to send full chain |
+| Clock skew | `NotBefore` in the future (server time wrong) | Fix NTP sync |
+| `TLSV1_ALERT_UNKNOWN_CA` (mTLS) | Client cert's CA not trusted by server | Add client CA to server's trust store (`SSLCACertificateFile`) |
+
+**Quick debug toolkit:**
+```bash
+# Inspect cert chain from a live server
+openssl s_client -connect example.com:443 -showcerts
+
+# Check expiry
+openssl x509 -in cert.pem -noout -dates
+
+# Verify cert matches key
+openssl x509 -noout -modulus -in cert.pem | md5sum
+openssl rsa  -noout -modulus -in key.pem  | md5sum
+# They must match — if they don't, the cert was signed for a different key
+
+# Verify chain
+openssl verify -CAfile chain.pem cert.pem
+
+# Check OCSP stapling
+openssl s_client -connect example.com:443 -status 2>/dev/null | grep -A 10 "OCSP Response"
+```
+
+---
+
+### One-Liners Worth Saying Out Loud
+
+- "OAuth 2.0 is authorization, not authentication — OIDC is the identity layer on top."
+- "PKCE lets public clients do auth-code flow safely — the code_verifier proves it's the same client that started the flow, even without a client secret."
+- "The implicit grant is dead — tokens in URL fragments leak via browser history and Referer headers."
+- "Refresh token rotation: invalidate the old token on each use — if a stolen token is reused, you get a reuse-detection alert."
+- "SAML is XML federation for enterprise apps; OIDC is JSON/JWT for everything modern."
+- "SCIM handles provisioning; SSO handles authentication. You need both for a complete IAM story."
+- "A missing intermediate CA is the most common TLS chain error — the server must send the full chain, not just the leaf cert."
+- "PFS means recording my TLS traffic today won't decrypt it if my private key leaks tomorrow."
+- "OCSP stapling eliminates the per-request CA round-trip and stops leaking your users' browsing to the CA."
+- "mTLS in a service mesh means every east-west call is authenticated and encrypted, no shared secrets needed."

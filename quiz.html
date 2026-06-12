@@ -1516,6 +1516,387 @@ const ALL_QUESTIONS = [
     explanation: "CloudFormation has automatic rollback enabled by default. If any resource update fails, it reverts the entire stack to the last known good state. You can disable this with --disable-rollback for debugging, but it leaves the stack in a broken state."
   }
 
+
+  // ── Section 19: OAuth 2.0 & OIDC ──────────────────────────────────────────
+  {
+    section: "Section 19: OAuth 2.0 & OIDC",
+    question: "OAuth 2.0 is often confused with authentication. What is the precise distinction between OAuth 2.0 and OpenID Connect (OIDC)?",
+    options: [
+      "They are the same protocol with different names",
+      "OAuth 2.0 is authorization ('what can this app access?'); OIDC is authentication ('who is this user?') — OIDC is built on top of OAuth 2.0 and adds an ID token",
+      "OAuth 2.0 is for mobile apps; OIDC is for web apps",
+      "OIDC is the older standard; OAuth 2.0 replaced it"
+    ],
+    answer: 1,
+    explanation: "OAuth 2.0 = authorization framework. It grants an application limited access to resources on behalf of a user. OIDC adds the identity layer: a signed ID token (JWT) containing who the user is. Use OAuth for API access delegation; use OIDC when you need to know the user's identity."
+  },
+  {
+    section: "Section 19: OAuth 2.0 & OIDC",
+    question: "Why is the Authorization Code flow with PKCE the current best practice for all OAuth 2.0 clients, replacing the Implicit grant?",
+    options: [
+      "PKCE is faster because it skips the token exchange step",
+      "The Implicit grant exposed tokens in the URL fragment — leaking via browser history and Referer headers. PKCE proves the same client that started the flow is exchanging the code, without needing a client secret",
+      "PKCE is required by GDPR for European users",
+      "The Implicit grant only worked on mobile; PKCE works everywhere"
+    ],
+    answer: 1,
+    explanation: "Implicit grant: access token returned directly in the redirect URL fragment → visible in browser history, server logs, Referer headers. No refresh tokens. PKCE: auth code returned (useless without code_verifier), exchanged back-channel. Even public clients (SPAs, mobile) are safe. OAuth 2.1 removes Implicit entirely."
+  },
+  {
+    section: "Section 19: OAuth 2.0 & OIDC",
+    question: "What does PKCE actually protect against, and how does it work?",
+    options: [
+      "It protects against SQL injection by sanitising the auth code",
+      "It protects against authorization code interception: the client creates a random code_verifier, hashes it to a code_challenge sent upfront — only the client holding the original code_verifier can exchange the code",
+      "It protects against replay attacks by timestamping each token request",
+      "It protects against XSS by storing tokens in HttpOnly cookies automatically"
+    ],
+    answer: 1,
+    explanation: "PKCE (Proof Key for Code Exchange): client generates random code_verifier → hashes it (SHA-256) to code_challenge → sends challenge with auth request. Auth server stores it. When exchanging the code, client sends code_verifier — server hashes it and compares. An intercepted auth code is useless without the verifier."
+  },
+  {
+    section: "Section 19: OAuth 2.0 & OIDC",
+    question: "What is the Client Credentials grant and when should you use it?",
+    options: [
+      "For web apps where the user logs in with their client ID and secret",
+      "For machine-to-machine (M2M) communication with no user involved — a backend service or daemon authenticates directly as itself to call another API",
+      "For mobile apps that can't store a client secret securely",
+      "For migrating from username/password to OAuth without changing the login UI"
+    ],
+    answer: 1,
+    explanation: "Client Credentials: the client authenticates with its own client_id + client_secret (or private key JWT), gets an access token representing the service itself — no user context. Use for: cron jobs calling internal APIs, microservice-to-microservice auth, CI/CD pipelines fetching secrets."
+  },
+  {
+    section: "Section 19: OAuth 2.0 & OIDC",
+    question: "What is the difference between an access token and a refresh token?",
+    options: [
+      "They are the same token — access tokens are called refresh tokens after they expire",
+      "Access token: short-lived (minutes–hours), presented to the Resource Server for API access. Refresh token: long-lived, stored securely, exchanged at the auth server for a new access token without re-authenticating the user",
+      "Refresh tokens are only used for mobile apps; web apps re-authenticate on every request",
+      "Access tokens are JWTs; refresh tokens are always opaque strings"
+    ],
+    answer: 1,
+    explanation: "Access tokens are short-lived by design — if stolen, they expire quickly. Refresh tokens are long-lived and must be stored securely (never in localStorage). Refresh token rotation: invalidate the old token on each use. If a stolen refresh token is reused, the rotation detects it and can revoke the whole grant."
+  },
+  {
+    section: "Section 19: OAuth 2.0 & OIDC",
+    question: "What is the difference between an opaque access token and a JWT access token?",
+    options: [
+      "JWTs are encrypted; opaque tokens are not",
+      "Opaque token: random string — Resource Server must call the auth server's /introspect endpoint to validate it. JWT: self-contained signed payload — Resource Server validates locally using the auth server's public key, no network call needed",
+      "Opaque tokens never expire; JWTs always expire",
+      "JWT tokens support scopes; opaque tokens do not"
+    ],
+    answer: 1,
+    explanation: "Opaque tokens are simple references — validation requires a network call to /introspect (adds latency, creates dependency). JWTs are self-validating: signature checked with public key, claims (exp, aud, iss) checked locally. Trade-off: JWTs can't be revoked until expiry — keep them short-lived (5–15 min)."
+  },
+  {
+    section: "Section 19: OAuth 2.0 & OIDC",
+    question: "Why should you never store access tokens in localStorage, and what is the recommended alternative?",
+    options: [
+      "localStorage is too small for JWTs",
+      "localStorage is synchronous and blocks the UI thread during token reads",
+      "localStorage is accessible to any JavaScript on the page — one XSS attack steals all tokens. Use HttpOnly cookies (inaccessible to JS) via a Backend-for-Frontend (BFF) pattern, or in-memory storage with a short expiry",
+      "localStorage doesn't work in Safari's private mode"
+    ],
+    answer: 2,
+    explanation: "localStorage is readable by any JS on the page — including injected scripts from XSS attacks. HttpOnly cookies are inaccessible to JS (only sent to the server). The BFF pattern: a thin server-side layer holds the tokens and sets HttpOnly cookies for the frontend. In-memory storage works but tokens are lost on page refresh."
+  },
+  {
+    section: "Section 19: OAuth 2.0 & OIDC",
+    question: "What does the 'state' parameter do in an OAuth authorization request?",
+    options: [
+      "It tells the authorization server which state (region) the user is in, for compliance",
+      "It carries the user's session data across the redirect",
+      "It is a random value tied to the user's session — when the auth server redirects back, the client verifies the state matches, preventing CSRF attacks on the OAuth callback",
+      "It specifies the desired token lifetime in seconds"
+    ],
+    answer: 2,
+    explanation: "The state parameter is a CSRF token for the OAuth flow. Client generates a random value, stores it in the session, sends it with the auth request. On callback, the client verifies the returned state matches. Without it, an attacker can trick a user into binding their account to the attacker's auth code."
+  },
+  {
+    section: "Section 19: OAuth 2.0 & OIDC",
+    question: "What is the ID token in OIDC and who should read it?",
+    options: [
+      "The ID token is the main credential sent to APIs for access control",
+      "The ID token is a JWT for the client application containing user identity claims (sub, email, name). It proves authentication happened. It should NEVER be sent to an API as a bearer token — use the access token for that",
+      "The ID token is a session cookie set by the identity provider",
+      "The ID token and access token are identical in OIDC"
+    ],
+    answer: 1,
+    explanation: "ID token: a JWT issued by the IdP, consumed by the CLIENT to know who the user is (subject, email, name, groups). The access token is what you send to APIs. Sending the ID token to an API is a common mistake — APIs can't reliably validate its audience and it may contain more PII than intended."
+  },
+
+  // ── Section 19: SAML, SSO, Okta/OneLogin ──────────────────────────────────
+  {
+    section: "Section 19: SAML & SSO (Okta / OneLogin)",
+    question: "What is a SAML assertion and what does it contain?",
+    options: [
+      "A SAML assertion is a JSON Web Token containing the user's password hash",
+      "A signed XML document issued by the IdP containing: who authenticated (subject), when and how (authentication statement), and user attributes like groups and email (attribute statement)",
+      "A cryptographic certificate proving the identity provider is trusted",
+      "An HTTP cookie set by the IdP to maintain the SSO session"
+    ],
+    answer: 1,
+    explanation: "A SAML assertion is a signed XML blob. Key parts: AuthnStatement (who logged in, when, via what method), AttributeStatement (email, groups, roles — what the SP uses for authorization), Conditions (NotBefore/NotOnOrAfter validity window, AudienceRestriction). SP validates the signature using the IdP's certificate."
+  },
+  {
+    section: "Section 19: SAML & SSO (Okta / OneLogin)",
+    question: "In a SAML SP-initiated SSO flow, what is the sequence of events?",
+    options: [
+      "IdP redirects user to SP → SP authenticates → SP issues token to IdP",
+      "User hits SP → SP redirects to IdP with a signed AuthnRequest → user authenticates at IdP → IdP POST's signed assertion to SP's ACS URL → SP validates and creates session",
+      "User hits IdP first, authenticates, then is forwarded to any SP of their choice",
+      "SP and IdP exchange certificates directly, then the user is auto-logged in"
+    ],
+    answer: 1,
+    explanation: "SP-initiated flow: SP generates a signed AuthnRequest (with a random ID it can correlate), redirects the user's browser to the IdP. User authenticates at IdP. IdP issues a signed SAML Response containing the assertion, HTTP-POST'd to the SP's Assertion Consumer Service (ACS) URL. SP validates signature, checks audience and conditions, creates session."
+  },
+  {
+    section: "Section 19: SAML & SSO (Okta / OneLogin)",
+    question: "A user successfully authenticates via SAML SSO but gets a 403 on the application. What is the most likely cause?",
+    options: [
+      "The SAML certificate has expired",
+      "The user's session cookie was not set correctly by the IdP",
+      "Authentication succeeded but authorization failed — the SP's attribute-based access control rejected the user, likely missing a required group or role attribute in the assertion",
+      "The ACS URL in the IdP is misconfigured"
+    ],
+    answer: 2,
+    explanation: "SSO splits into authentication (did you prove who you are?) and authorization (are you allowed in?). A 403 after successful SSO means the SP evaluated the assertion's attributes (groups, roles) and the user didn't qualify. Check the assertion attributes with a SAML tracer — the required group membership or role attribute is likely missing."
+  },
+  {
+    section: "Section 19: SAML & SSO (Okta / OneLogin)",
+    question: "What is SCIM, and why do you need it in addition to SSO?",
+    options: [
+      "SCIM is an alternative to SAML for authentication in modern apps",
+      "SCIM (System for Cross-domain Identity Management) is a REST API standard for automating user provisioning and deprovisioning. SSO handles login; SCIM handles creating/updating/deleting accounts across apps when HR systems change",
+      "SCIM is a monitoring protocol for identity provider health",
+      "SCIM is Okta's proprietary sync protocol for Active Directory"
+    ],
+    answer: 1,
+    explanation: "SSO alone means users can log in — but accounts must be created first and deleted when someone leaves. Without SCIM, offboarding is manual: HR removes a user, but their Salesforce/GitHub/Slack accounts remain active. SCIM automates the full lifecycle: Workday/HR fires a SCIM event → Okta pushes to downstream apps instantly."
+  },
+  {
+    section: "Section 19: SAML & SSO (Okta / OneLogin)",
+    question: "What is the difference between SAML and OIDC, and when would you choose one over the other?",
+    options: [
+      "SAML is newer and should always be preferred; OIDC is legacy",
+      "SAML: XML-based, 2005 enterprise standard, best for legacy apps and Windows/AD ecosystems. OIDC: JSON/JWT, 2014, developer-friendly, best for modern apps, APIs, and mobile. Okta/OneLogin support both — use OIDC for new integrations",
+      "SAML is for web apps; OIDC is for mobile only",
+      "They are interchangeable — the choice only affects the token format"
+    ],
+    answer: 1,
+    explanation: "SAML: verbose XML assertions, designed for federated web SSO in enterprise environments, natively integrates with AD FS and legacy SaaS. OIDC: compact JWTs, REST-based, easy to implement in any language, supports mobile/SPA flows, native API authorization. New greenfield? Pick OIDC. Legacy enterprise app that only speaks SAML? Stick with SAML."
+  },
+  {
+    section: "Section 19: SAML & SSO (Okta / OneLogin)",
+    question: "Users are getting stuck in a redirect loop between the SP and IdP during SSO. What are the most likely causes?",
+    options: [
+      "The user's browser doesn't support cookies",
+      "SP can't validate the assertion (cert mismatch, wrong ACS URL, clock skew on NotBefore/NotOnOrAfter) — SP keeps rejecting the assertion and sending the user back to the IdP",
+      "The user hasn't been assigned to the application in the IdP",
+      "The SAML response is too large for the browser to POST"
+    ],
+    answer: 1,
+    explanation: "Redirect loops = SP is rejecting the SAML assertion and bouncing the user back. Use a browser SAML tracer (Chrome extension) to decode the base64 assertion. Check: (1) certificate mismatch between IdP metadata and what SP has configured, (2) ACS URL doesn't match what IdP is POSTing to, (3) clock skew — NTP sync the SP server, (4) audience restriction mismatch."
+  },
+
+  // ── Section 19: LDAP ──────────────────────────────────────────────────────
+  {
+    section: "Section 19: LDAP",
+    question: "What is an LDAP Distinguished Name (DN), and what does this example represent: CN=John Smith,OU=Engineering,DC=example,DC=com?",
+    options: [
+      "A URL path to a file on the LDAP server's filesystem",
+      "The unique path to an entry in the directory tree: CN=Common Name (person/object), OU=Organizational Unit (department), DC=Domain Component (example.com split by dots)",
+      "An encrypted string containing the user's password and group memberships",
+      "A DNS record that maps the user's name to their IP address"
+    ],
+    answer: 1,
+    explanation: "The DN is the full hierarchical address of an entry in the LDAP Directory Information Tree (DIT). Reading right-to-left: DC=com, DC=example = the domain example.com; OU=Engineering = the Engineering organizational unit; CN=John Smith = the specific person. Must be globally unique within the directory."
+  },
+  {
+    section: "Section 19: LDAP",
+    question: "An application uses a service account to authenticate users against LDAP. The flow suddenly breaks with 'Invalid Credentials'. What is the most likely root cause?",
+    options: [
+      "The LDAP server's TLS certificate has expired",
+      "The service account (bind DN) password was rotated in the directory but not updated in the application's config — the app can no longer search for users",
+      "Too many concurrent LDAP connections from the application",
+      "The user's account was locked out from too many failed logins"
+    ],
+    answer: 1,
+    explanation: "The typical LDAP auth flow: app binds as service account → searches for user by uid → binds as user with the submitted password. Error 49 (Invalid Credentials) on the first bind = service account password mismatch. This is the #1 cause of sudden LDAP auth outages — password rotation without updating the app config."
+  },
+  {
+    section: "Section 19: LDAP",
+    question: "What is the difference between plain LDAP (port 389) and LDAPS (port 636), and what does StartTLS mean?",
+    options: [
+      "LDAP and LDAPS are identical; the port difference is legacy convention",
+      "LDAPS: TLS established from the first packet (like HTTPS). Plain LDAP: cleartext by default, but StartTLS upgrades the connection to TLS via an in-band command. Either way: never transmit credentials over an unencrypted LDAP connection",
+      "LDAPS is only used for Active Directory; LDAP is for OpenLDAP",
+      "StartTLS is a deprecated method; LDAPS is always preferred"
+    ],
+    answer: 1,
+    explanation: "LDAPS (636): TLS wraps the entire connection from the start, like HTTPS. StartTLS (389): connection begins cleartext, client sends STARTTLS command, then negotiates TLS before sending any credentials. Both achieve encryption. LDAP without either = passwords in cleartext on the wire — never acceptable in production."
+  },
+  {
+    section: "Section 19: LDAP",
+    question: "What is the difference between LDAP (the protocol) and Active Directory?",
+    options: [
+      "They are the same thing — Active Directory is just Microsoft's name for LDAP",
+      "LDAP is a protocol for accessing directory services; Active Directory is Microsoft's directory service that uses LDAP as its access protocol, plus Kerberos for authentication, DNS for DC discovery, and its own replication model",
+      "LDAP is used for authentication; Active Directory is used for authorization only",
+      "Active Directory is open source; LDAP is proprietary to IETF"
+    ],
+    answer: 1,
+    explanation: "LDAP (RFC 4511) = the query/modify protocol. Active Directory = a full directory service: LDAP for data access, Kerberos (port 88) for authentication tickets, DNS for locating domain controllers, its own multi-master replication, Group Policy for management. You speak LDAP to AD, but AD is much more than just an LDAP server."
+  },
+  {
+    section: "Section 19: LDAP",
+    question: "What is an anonymous LDAP bind, and why is it a security concern?",
+    options: [
+      "An anonymous bind uses a well-known service account shared across all applications",
+      "An anonymous bind requires no credentials — the connection is accepted but typically read-only. Security risk: a misconfigured directory may expose all user attributes (email, phone, manager) to anyone who can reach the LDAP port",
+      "Anonymous binds are only allowed from localhost for security",
+      "Anonymous binds use the guest account, which has no permissions"
+    ],
+    answer: 1,
+    explanation: "Anonymous LDAP bind: client connects without DN or password. Directory responds with whatever the ACL permits for 'everyone.' Misconfigured AD or OpenLDAP can expose full user directory — names, emails, phone numbers, group memberships — to unauthenticated network users. Audit your LDAP ACLs and disable anonymous bind unless explicitly needed."
+  },
+
+  // ── Section 20: PKI / TLS / SSL ───────────────────────────────────────────
+  {
+    section: "Section 20: PKI & TLS Certificates",
+    question: "What happens during a TLS 1.3 handshake, and how does it differ from TLS 1.2?",
+    options: [
+      "TLS 1.3 is identical to 1.2 but uses stronger cipher suites",
+      "TLS 1.3: 1-RTT handshake, mandatory ephemeral DH key exchange (PFS always), fewer cipher suites, removed RSA key transport. TLS 1.2: 2-RTT, optional RSA key exchange (no PFS), broader cipher support including weak ones",
+      "TLS 1.3 moves the certificate exchange to after the handshake for speed",
+      "TLS 1.3 requires client certificates (mTLS) by default"
+    ],
+    answer: 1,
+    explanation: "TLS 1.3 improvements: 1-RTT (vs 1.2's 2-RTT), mandatory ECDHE/DHE (PFS always on), removed RSA key transport, removed MD5/SHA-1/RC4/DES, encrypted certificate (attacker can't see which cert the server presents). Result: faster, always forward-secret, smaller attack surface."
+  },
+  {
+    section: "Section 20: PKI & TLS Certificates",
+    question: "What is a certificate chain of trust, and what is the most common chain-related error in production?",
+    options: [
+      "A list of domains covered by a wildcard certificate",
+      "Root CA → Intermediate CA → Leaf cert. The most common error: server sends only the leaf cert without the intermediate — clients that don't have the intermediate cached fail validation with 'unable to verify certificate chain'",
+      "A sequence of TLS session IDs used for session resumption",
+      "The list of algorithms attempted during the TLS handshake"
+    ],
+    answer: 1,
+    explanation: "Root CA is offline/self-signed and in the OS/browser trust store. Intermediate CA signs leaf certs (isolates the root). Your server must send: leaf cert + all intermediates (not the root — clients have that). Missing intermediate = the most common 'works on my machine' cert error (local system has it cached; fresh clients don't)."
+  },
+  {
+    section: "Section 20: PKI & TLS Certificates",
+    question: "What is SNI (Server Name Indication) and why does it matter for modern infrastructure?",
+    options: [
+      "SNI is a DNS extension that maps hostnames to TLS certificates",
+      "SNI allows the client to send the target hostname in the ClientHello (before the cert is sent), letting one IP host thousands of different TLS certificates — essential for ALBs, CDNs, and multi-tenant services",
+      "SNI is used by certificate authorities to verify domain ownership",
+      "SNI encrypts the hostname in the TLS handshake to prevent surveillance"
+    ],
+    answer: 1,
+    explanation: "Without SNI: one IP address = one TLS certificate. With SNI: the client announces which hostname it wants in the unencrypted ClientHello → the server picks the right certificate. AWS ALBs, Cloudflare, nginx virtual hosts all depend on SNI. Encrypted Client Hello (ECH) in TLS 1.3 will eventually encrypt this too."
+  },
+  {
+    section: "Section 20: PKI & TLS Certificates",
+    question: "What is mTLS and where is it commonly used in modern SRE environments?",
+    options: [
+      "mTLS is TLS with mandatory compression enabled",
+      "Mutual TLS: both client and server present certificates and authenticate each other. Common in: service meshes (Istio/Linkerd east-west traffic), zero-trust networks, API gateway client auth, internal microservice communication",
+      "mTLS is TLS 1.3's name for the mutual key exchange phase",
+      "mTLS is only used between load balancers and backend servers"
+    ],
+    answer: 1,
+    explanation: "Standard TLS: server proves its identity to the client. mTLS: client also presents a certificate, server validates it against a trusted CA. In a service mesh, the mesh control plane issues short-lived certs to each workload — every service-to-service call is mutually authenticated and encrypted with no shared secrets or passwords."
+  },
+  {
+    section: "Section 20: PKI & TLS Certificates",
+    question: "What is Perfect Forward Secrecy (PFS) and why does it matter for long-term security?",
+    options: [
+      "PFS means the TLS session automatically rotates keys every 60 seconds",
+      "PFS means each session uses a unique ephemeral key derived from a fresh DH exchange — recording today's encrypted traffic and stealing the server's private key tomorrow still cannot decrypt past sessions",
+      "PFS prevents replay attacks by including a timestamp in every TLS record",
+      "PFS is a certificate property that prevents the cert from being used after expiry"
+    ],
+    answer: 1,
+    explanation: "Without PFS (RSA key exchange in TLS 1.2): the server's private key can decrypt ALL past recorded sessions. With PFS (ECDHE/DHE): each session has a unique ephemeral key not stored anywhere. State-level adversaries record TLS traffic hoping to decrypt it later — PFS defeats this. TLS 1.3 mandates PFS for all connections."
+  },
+  {
+    section: "Section 20: PKI & TLS Certificates",
+    question: "What is OCSP stapling and why should you enable it on every internet-facing TLS server?",
+    options: [
+      "OCSP stapling embeds the full certificate chain in the TLS handshake for faster validation",
+      "The server pre-fetches a signed OCSP response from the CA and staples it to the TLS handshake — clients get revocation status without contacting the CA directly, eliminating latency and preventing the CA from tracking which sites users visit",
+      "OCSP stapling is a way to pin a specific certificate version to prevent substitution attacks",
+      "OCSP stapling allows the certificate to be renewed without a server restart"
+    ],
+    answer: 1,
+    explanation: "Standard OCSP: browser makes a separate request to the CA's OCSP responder for every new connection — adds 50-200ms latency, leaks browsing history to the CA, fails open if the responder is down. OCSP stapling: server caches and serves the signed OCSP response itself. Enable in nginx: ssl_stapling on; ssl_stapling_verify on;"
+  },
+  {
+    section: "Section 20: PKI & TLS Certificates",
+    question: "What is the difference between a DV, OV, and EV certificate?",
+    options: [
+      "They differ only in price — DV is free, OV is mid-tier, EV is enterprise",
+      "DV (Domain Validated): CA confirms only domain control (DNS/HTTP challenge) — fast, free via Let's Encrypt. OV (Organization Validated): CA verifies the org exists. EV (Extended Validation): full legal verification. All three provide the same encryption strength",
+      "DV certificates don't support HTTPS; OV and EV are required for production",
+      "EV certificates use stronger encryption algorithms than DV"
+    ],
+    answer: 1,
+    explanation: "All three offer identical encryption strength. The difference is only identity assurance. DV = fastest (minutes), cheapest (free with Let's Encrypt), sufficient for most use cases. OV/EV = higher trust signals for customer-facing financial/healthcare sites. EV's green address bar was removed by Chrome/Firefox in 2019 — its visual advantage is largely gone."
+  },
+  {
+    section: "Section 20: PKI & TLS Certificates",
+    question: "You run 'openssl s_client -connect example.com:443' and see 'verify error:num=20:unable to get local issuer certificate'. What does this mean and how do you fix it?",
+    options: [
+      "The certificate has expired — renew it immediately",
+      "The server is not sending the intermediate CA certificate — the client cannot build a trust chain to the root. Fix: configure the server to send the full certificate chain (leaf + all intermediates)",
+      "The domain name doesn't match the certificate's CN/SAN fields",
+      "The private key and certificate don't match — regenerate the CSR"
+    ],
+    answer: 1,
+    explanation: "Error 20 = 'unable to get local issuer certificate' — the client has the leaf cert but can't find the issuer (intermediate CA) to verify the signature. The server must send the full chain. In nginx: ssl_certificate should point to a file containing leaf cert + intermediate cert(s) concatenated. Verify with: openssl s_client -showcerts."
+  },
+  {
+    section: "Section 20: PKI & TLS Certificates",
+    question: "How do you verify that a TLS private key and certificate are a matching pair?",
+    options: [
+      "Compare the certificate's Subject field to the key's filename",
+      "Check that both files have the same creation date",
+      "Compare the MD5 of the modulus: 'openssl x509 -noout -modulus -in cert.pem | md5sum' must equal 'openssl rsa -noout -modulus -in key.pem | md5sum'",
+      "Run 'openssl verify -in key.pem cert.pem' — it will output 'match: OK'"
+    ],
+    answer: 2,
+    explanation: "A certificate embeds the public key; the key file holds the private key. The modulus is the shared mathematical value. If cert.pem and key.pem have different modulus MD5s, the cert was signed for a different private key — TLS will fail with a handshake error. This is a common mistake after key rotation."
+  },
+  {
+    section: "Section 20: PKI & TLS Certificates",
+    question: "What is certificate pinning and what is the main operational risk?",
+    options: [
+      "Certificate pinning forces all traffic through a specific IP address",
+      "Pinning hardcodes the expected cert or public key hash in the client — even a valid CA-issued cert is rejected if it doesn't match. Risk: pin the wrong cert or fail to include a backup pin → all clients are locked out until the app is updated",
+      "Certificate pinning is the same as HSTS — it forces HTTPS",
+      "Pinning is only used by IoT devices that can't trust the system certificate store"
+    ],
+    answer: 1,
+    explanation: "Pinning defeats rogue CA attacks (a CA issues a fraudulent cert for your domain → pinned clients reject it). Operational risk: when you legitimately rotate your cert/key, all pinned clients break until they update. Best practice: always include at least one backup pin (the next cert's public key), and test certificate rotation before it happens."
+  },
+  {
+    section: "Section 20: PKI & TLS Certificates",
+    question: "A service in your cluster gets 'TLSV1_ALERT_UNKNOWN_CA' when making mTLS calls to another service. What is the cause?",
+    options: [
+      "The TLS version is too old — upgrade to TLS 1.3",
+      "The client's certificate was issued by a CA that the server doesn't trust — the server's trust store is missing the client CA's certificate",
+      "The server's certificate has expired",
+      "The cipher suite negotiation failed because neither side has matching ciphers"
+    ],
+    answer: 1,
+    explanation: "UNKNOWN_CA in mTLS = the server received the client's certificate but doesn't trust the CA that signed it. Fix: add the client certificate's issuing CA to the server's trusted CA bundle (e.g., nginx: ssl_client_certificate /path/to/client-ca.pem; ssl_verify_client on;). Common in service mesh bootstrapping and zero-trust setups."
+  }
+
 ]; // end ALL_QUESTIONS
 
 // ── Quiz State ───────────────────────────────────────────────────────────────
