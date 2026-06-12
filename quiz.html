@@ -1895,6 +1895,617 @@ const ALL_QUESTIONS = [
     ],
     answer: 1,
     explanation: "UNKNOWN_CA in mTLS = the server received the client's certificate but doesn't trust the CA that signed it. Fix: add the client certificate's issuing CA to the server's trusted CA bundle (e.g., nginx: ssl_client_certificate /path/to/client-ca.pem; ssl_verify_client on;). Common in service mesh bootstrapping and zero-trust setups."
+  },
+
+
+  // ── Section 21: Precision Drills — Load Average ──────────────────────────
+  {
+    section: "§21 Precision: Load Average",
+    question: "Which process states count toward Linux load average?",
+    options: [
+      "R (running) and S (sleeping) — all active processes",
+      "R (running/runnable) and D (uninterruptible) only — S does NOT count",
+      "R, D, and Z (zombie)",
+      "All non-idle states including S, T, and Z"
+    ],
+    answer: 1,
+    explanation: "Load average = R + D, averaged over 1/5/15 minutes. S (sleeping, waiting for events) does NOT contribute — those processes are idle waiting for I/O, timers, or user input. Zombies (Z), stopped (T), and idle kernel threads (I) also don't count. This is the single most common load average trap answer."
+  },
+  {
+    section: "§21 Precision: Load Average",
+    question: "A server has 300 processes in S (interruptible sleep) state and 0 in R or D. What is its approximate load average?",
+    options: [
+      "~300 — all those sleeping processes count",
+      "~150 — sleeping processes count at half-weight",
+      "~0 — S state processes do not contribute to load average",
+      "Depends on the number of CPU cores"
+    ],
+    answer: 2,
+    explanation: "S-state processes are idle — they're waiting for events (network packets, timers, user keystrokes). They are NOT competing for CPU or doing I/O. They contribute exactly zero to load average. A healthy web server can have hundreds of S-state threads with a load of 0.1."
+  },
+  {
+    section: "§21 Precision: Load Average",
+    question: "1000 zombie processes have accumulated. An engineer says 'those zombies are spiking our load average.' Is this correct?",
+    options: [
+      "Yes — the zombie cleanup is consuming CPU cycles",
+      "Yes — zombies count toward load average until reaped",
+      "No — zombie (Z) processes are dead and do NOT contribute to load average",
+      "Partially — zombies count at 0.1 weight each"
+    ],
+    answer: 2,
+    explanation: "Zombie processes are dead. They hold only a PID slot and a tiny kernel struct. They consume no CPU, do no I/O, and do NOT count toward load average. The real danger of zombie accumulation is PID table exhaustion causing fork() to fail — not load average inflation."
+  },
+  {
+    section: "§21 Precision: Load Average",
+    question: "Load average is 48. The machine has 48 CPUs. CPU utilization is 2%. What is the most precise diagnosis?",
+    options: [
+      "48 processes are competing for CPU — the machine is saturated",
+      "~48 processes are in D (uninterruptible) state blocked on I/O — load is from I/O pressure, not CPU pressure",
+      "The load average metric is broken on this machine",
+      "48 sleeping (S) processes are temporarily inflating the metric"
+    ],
+    answer: 1,
+    explanation: "High load + low CPU utilization = D-state I/O bottleneck, not CPU saturation. If the load were CPU-bound (R state), you'd see high CPU utilization. 2% CPU with load 48 means ~48 processes are stuck on I/O (classic: hung NFS, slow disk, storage timeout)."
+  },
+  {
+    section: "§21 Precision: Load Average",
+    question: "The three load average numbers shown by uptime (e.g., 1.52 3.20 4.05) represent averages over what time windows?",
+    options: [
+      "1 second, 30 seconds, 60 seconds",
+      "5 minutes, 15 minutes, 30 minutes",
+      "1 minute, 5 minutes, 15 minutes",
+      "10 seconds, 1 minute, 5 minutes"
+    ],
+    answer: 2,
+    explanation: "The three load average values are exponentially weighted moving averages over 1, 5, and 15 minutes. A load of 4.05 at the 15-minute mark with 1.52 at 1 minute shows the system was busier recently and is now recovering."
+  },
+  {
+    section: "§21 Precision: Load Average",
+    question: "You fix a hung NFS mount. Load average drops from 44 to 0.1 in seconds. What does this confirm about the nature of the load?",
+    options: [
+      "The NFS fix freed CPU cycles that were wasted on retry loops",
+      "The load was entirely D-state (I/O blocked) — the 44 processes stuck on the dead NFS mount all unblocked simultaneously when the mount was cleared",
+      "NFS uses a lot of memory which was causing swap pressure",
+      "The load balancer was routing traffic to the NFS server"
+    ],
+    answer: 1,
+    explanation: "This is the textbook confirmation: all the load was D-state processes blocked on I/O to the dead NFS mount. When umount -f cleared the mount, those D-state processes unblocked simultaneously, instantly draining the load average. Pure I/O bottleneck, zero CPU involvement."
+  },
+  {
+    section: "§21 Precision: Load Average",
+    question: "Which of these would raise load average WITHOUT raising CPU utilization?",
+    options: [
+      "Starting 10 CPU-bound processes that run infinite loops",
+      "10 more processes entering D state waiting on a slow SAN",
+      "100 more threads entering S state waiting for HTTP responses",
+      "Enabling CPU throttling via cgroups on existing processes"
+    ],
+    answer: 1,
+    explanation: "D-state processes contribute to load average but do no CPU work — they are blocked in kernel I/O syscalls. R-state (CPU-bound) processes raise both load AND CPU utilization. S-state processes (waiting for network, timers) raise neither."
+  },
+  {
+    section: "§21 Precision: Load Average",
+    question: "An engineer says 'load average 8 means 8 processes want the CPU.' What is the precise correction?",
+    options: [
+      "Correct — load average only counts CPU-runnable processes",
+      "Load average 8 means 8 processes are in R OR D state — some may want CPU (R), others may be blocked on I/O (D). You cannot know which without checking ps",
+      "Load average measures I/O wait time, not process counts",
+      "Load average 8 only matters relative to the number of CPU cores"
+    ],
+    answer: 1,
+    explanation: "Load average counts both R (wants CPU) and D (blocked on I/O). A load of 8 could be 8 CPU-hungry processes, 8 processes stuck on a dead disk, or any mix. Always split the diagnosis: check CPU utilization AND D-state process counts before concluding."
+  },
+  {
+    section: "§21 Precision: Load Average",
+    question: "A load average trending 0.5 → 0.5 → 0.5 (1min/5min/15min all equal). What does the flat trend tell you?",
+    options: [
+      "The system is idle — all three values at 0.5 means no work is happening",
+      "The load has been steady at ~0.5 for at least 15 minutes — not a spike, not recovering. Whatever is causing 0.5 load has been persistent",
+      "The load average algorithm is broken — all three should never be equal",
+      "CPU utilization is exactly 50% on a single-core machine"
+    ],
+    answer: 1,
+    explanation: "When the 1-min, 5-min, and 15-min averages are all the same, the load has been constant for at least 15 minutes. Diverging values tell you about direction: 1-min > 15-min = load is rising; 1-min < 15-min = load is falling and recovering."
+  },
+  {
+    section: "§21 Precision: Load Average",
+    question: "A colleague argues that on a 4-core machine, load average of 4 means the system is 'fully utilized.' Is this accurate?",
+    options: [
+      "Yes — load equal to core count = 100% utilization",
+      "Not necessarily — load 4 on 4 cores means the CPU scheduler queue averages 4 ready/blocked tasks, but if those are D-state processes doing I/O, CPUs are actually idle. Load = 4 only means CPU saturation if the processes are in R state",
+      "No — you need load > 8 to be fully utilized on a 4-core machine",
+      "Correct, but only if hyperthreading is disabled"
+    ],
+    answer: 1,
+    explanation: "Load / cores is only a meaningful saturation ratio for CPU-bound workloads (all R state). D-state processes inflate load without consuming CPU — load 4 on 4 cores with 95% idle CPU means you have a storage problem, not a CPU problem. Always qualify by checking CPU utilization."
+  },
+
+  // ── Section 21: Precision Drills — Orphan vs Zombie ──────────────────────
+  {
+    section: "§21 Precision: Orphan vs Zombie",
+    question: "A child process is in the middle of handling a database write when its parent is kill -9'd. The write is still in progress. What is the correct term for the child?",
+    options: [
+      "Defunct — it no longer has a living parent",
+      "Zombie — its parent is dead",
+      "Orphan — alive, still executing, re-parented to init/systemd",
+      "D-state — waiting for the database I/O to complete"
+    ],
+    answer: 2,
+    explanation: "Orphan = alive process whose parent died. The child is STILL RUNNING — it has CPU time, memory, open FDs, and is actively writing to the database. 'Defunct' and 'zombie' both mean the process has already exited. Using 'defunct' for a living process is a category error that interviewers specifically probe for."
+  },
+  {
+    section: "§21 Precision: Orphan vs Zombie",
+    question: "What does '<defunct>' mean in ps output next to a process name?",
+    options: [
+      "The process's parent has died — it is an orphan",
+      "The process is in D state blocked on I/O",
+      "The process has exited but its exit status has not been collected by the parent — it is a zombie",
+      "The process has been stopped with SIGSTOP"
+    ],
+    answer: 2,
+    explanation: "ps shows '[processname] <defunct>' for zombie processes — ones that have called exit() but whose parent has not yet called wait(). The process is DEAD. Its code, heap, and stack have been freed. Only a PID slot and tiny exit-status struct remain."
+  },
+  {
+    section: "§21 Precision: Orphan vs Zombie",
+    question: "An engineer runs 'kill -9 <pid>' on a zombie process. What happens?",
+    options: [
+      "The zombie is immediately removed from the process table",
+      "The kill is ignored — zombies are immune to signals",
+      "Nothing meaningful — the process is already dead. There is nothing to kill. The zombie can only be cleared by the parent calling wait()",
+      "The zombie is promoted to orphan state pending parent restart"
+    ],
+    answer: 2,
+    explanation: "You cannot kill a zombie because it is already dead. SIGKILL needs a living process to deliver to. The zombie entry persists until its parent calls wait() (collecting the exit status). Fix: repair the parent, or kill the parent so init adopts and reaps the zombies."
+  },
+  {
+    section: "§21 Precision: Orphan vs Zombie",
+    question: "1000 zombie processes are holding PID slots. What is the actual operational risk?",
+    options: [
+      "~1 GB memory consumption from zombie state data",
+      "High CPU usage from the kernel maintaining zombie state",
+      "PID table exhaustion — each zombie holds a PID; when pid_max is hit, fork() fails with EAGAIN and no new processes can be created",
+      "Load average inflation making the system appear busier than it is"
+    ],
+    answer: 2,
+    explanation: "Zombies consume almost no memory (just a PID slot + small kernel struct). They don't consume CPU. They don't inflate load average. The real danger: they hold PID numbers. When zombies fill the PID table (pid_max), fork() fails with EAGAIN — new processes, threads, and shell commands all start failing."
+  },
+  {
+    section: "§21 Precision: Orphan vs Zombie",
+    question: "When a parent process dies, what happens to ALL of its children simultaneously?",
+    options: [
+      "All children are also killed — they receive SIGHUP",
+      "Children are paused (T state) until a new parent is assigned",
+      "All children survive as orphans and are re-parented to init/PID 1",
+      "Children become zombies until the grandparent reaps them"
+    ],
+    answer: 2,
+    explanation: "When a parent exits, ALL its living children are re-parented to init/PID 1 atomically. They continue running — init will call wait() and reap each one when it eventually exits. kill -9 on a parent does NOT propagate to children. They become orphans, not zombies."
+  },
+  {
+    section: "§21 Precision: Orphan vs Zombie",
+    question: "Why is 'I need to kill the zombie processes' wrong, and what is the correct phrasing?",
+    options: [
+      "It's correct — kill is the standard Unix term for removing processes",
+      "Zombies are already dead — you cannot kill them. The correct action is to reap them, by fixing the parent to call wait() or restarting the parent so init adopts and reaps them",
+      "The correct verb is 'terminate' not 'kill' in professional contexts",
+      "You should use SIGCHLD not SIGKILL to clear zombies"
+    ],
+    answer: 1,
+    explanation: "Verb precision matters in SRE interviews. 'Kill' implies the process is alive — zombies are already dead. You 'reap' zombies by having the parent call wait(). The fix is always about the PARENT: make it call wait() (fix the bug), or restart it (init will adopt and reap the orphaned zombies)."
+  },
+  {
+    section: "§21 Precision: Orphan vs Zombie",
+    question: "Process A forks B. B is still running. A exits. What is B now, and who will reap B when it exits?",
+    options: [
+      "B is a zombie; A's parent must reap it",
+      "B is an orphan; init/PID 1 will reap B when B eventually exits",
+      "B is defunct; B must call wait() on itself",
+      "B is unaffected; B only becomes an orphan if it also forks"
+    ],
+    answer: 1,
+    explanation: "B is an ORPHAN — alive, executing, re-parented to init. When B eventually exits, init calls wait() and reaps it. B is not a zombie (it hasn't exited yet) and not defunct (synonym for zombie). The orphan state is transparent to B — it just keeps running."
+  },
+  {
+    section: "§21 Precision: Orphan vs Zombie",
+    question: "A containerized app forks worker children but never calls wait() on them. The workers exit normally. What accumulates over time?",
+    options: [
+      "Orphan processes that init must adopt",
+      "D-state processes consuming I/O slots",
+      "Zombie processes — the workers have exited but the parent never collected their exit status. Without tini as PID 1, they accumulate until the container is restarted",
+      "Nothing — the container runtime automatically reaps all child processes"
+    ],
+    answer: 2,
+    explanation: "In a container without an init process, your app is PID 1. PID 1 has no default SIGTERM handler AND inherits the zombie-reaping duty. If your app forks but never calls wait(), all exiting children become zombies. Fix: docker run --init or ECS initProcessEnabled=true (injects tini)."
+  },
+  {
+    section: "§21 Precision: Orphan vs Zombie",
+    question: "Which uses more system resources: 500 zombie processes or 1 orphan actively doing CPU work?",
+    options: [
+      "500 zombies — each holds memory, stack, and file descriptors",
+      "The 1 orphan — zombies have freed all resources except a PID slot and tiny kernel struct. The orphan consumes real CPU, memory, and open FDs",
+      "They use the same — both hold PID slots",
+      "500 zombies, because the kernel must scan them for signal delivery"
+    ],
+    answer: 1,
+    explanation: "Zombie resource footprint: ~1 KB per zombie (PID slot + task_struct residual + exit code). An orphan doing CPU work uses actual CPU time, heap memory, stack, open file descriptors — orders of magnitude more. The zombie danger is PID exhaustion, not resource consumption."
+  },
+  {
+    section: "§21 Precision: Orphan vs Zombie",
+    question: "How does init/systemd prevent zombie accumulation for re-parented processes?",
+    options: [
+      "init sends periodic SIGCHLD to all orphaned processes",
+      "init uses a kernel thread that scans for zombies every 5 seconds",
+      "init is specifically coded to call wait() for any child re-parented to it — this is one of PID 1's fundamental responsibilities",
+      "systemd uses cgroup cleanup to automatically remove zombie entries"
+    ],
+    answer: 2,
+    explanation: "One of init/PID 1's core duties is to be a reaper: it calls wait() for any process that gets re-parented to it. This is why orphans are automatically cleaned up — they eventually exit, init reaps them, PID is freed. If PID 1 doesn't do this (e.g., your app as PID 1 in a container), zombies accumulate."
+  },
+
+  // ── Section 21: Precision Drills — 4096 / Memory ─────────────────────────
+  {
+    section: "§21 Precision: 4096 & Memory",
+    question: "Asked 'what is 4096 bytes in the context of Linux?' — what should be your FIRST answer?",
+    options: [
+      "The default ext4 and xfs filesystem block size",
+      "The maximum size of a kernel stack frame",
+      "The memory page size — 2^12 = 4 KiB. This is the primary meaning; filesystem block size defaulting to 4096 is a consequence of aligning to the page size",
+      "The size of a TCP socket receive buffer"
+    ],
+    answer: 2,
+    explanation: "Lead with memory page size — it's the more fundamental concept, governing virtual memory, COW, demand paging, and the page cache. The filesystem block size defaulting to 4 KiB is a deliberate alignment choice (one block = one page = one cache entry). Block size is the second answer, not the first."
+  },
+  {
+    section: "§21 Precision: 4096 & Memory",
+    question: "What is demand paging, precisely?",
+    options: [
+      "Pages are proactively loaded from disk into RAM before the process accesses them",
+      "The kernel swaps pages in from disk on demand when memory runs low",
+      "Virtual memory pages are mapped but NOT backed by physical RAM until the process first accesses them — a page fault allocates the physical frame at first touch",
+      "Pages are shared between processes on-demand to reduce duplication"
+    ],
+    answer: 2,
+    explanation: "Demand paging: virtual address space is set up (mmap'd), but physical pages are not allocated until the process actually reads or writes that address. First access → CPU page fault exception → kernel allocates a physical frame, maps it into the page table → instruction retries transparently. This makes fork() and exec() cheap."
+  },
+  {
+    section: "§21 Precision: 4096 & Memory",
+    question: "fork() is called on a process with 4 GB of mapped heap. How much additional physical RAM is consumed immediately after fork() returns?",
+    options: [
+      "4 GB — fork() copies the full address space",
+      "2 GB — fork() uses COW so half is shared",
+      "Near zero — COW marks all pages shared read-only; physical pages are only copied when either process writes to them",
+      "Depends on vm.overcommit_memory"
+    ],
+    answer: 2,
+    explanation: "Copy-on-Write: after fork(), parent and child share the exact same physical pages, all marked read-only. No copying happens. When either process writes to a page, the kernel copies just that one page. For a 4 GB heap process, fork() might actually allocate only a few hundred KB (stack + modified data) before exec() replaces the image entirely."
+  },
+  {
+    section: "§21 Precision: 4096 & Memory",
+    question: "A 32 GB server shows 'free: 200 MB, available: 28 GB' in free -m. Is it running out of memory?",
+    options: [
+      "Yes — 200 MB free is critically low, expect OOM kills soon",
+      "No — 'available' is the real metric. The 'free' number is low because spare RAM is used as page cache, which the kernel reclaims instantly when applications need it",
+      "Depends on swap usage",
+      "Yes — page cache of ~28 GB indicates a serious memory leak"
+    ],
+    answer: 1,
+    explanation: "'available' = free + reclaimable page cache. The kernel fills spare RAM with page cache (disk caching) — this is intentional, not a problem. When an app needs memory, page cache is evicted instantly. 200 MB 'free' + 27.8 GB reclaimable cache = 28 GB available = healthy system. Alert on 'available', not 'free'."
+  },
+  {
+    section: "§21 Precision: 4096 & Memory",
+    question: "In what direction does page cache flow — from RAM to disk, or from disk to RAM?",
+    options: [
+      "Page cache flows from RAM to disk — it buffers writes before flushing",
+      "Page cache flows from disk to RAM — spare RAM caches disk reads so subsequent accesses are served from RAM",
+      "Both directions equally — reads are cached on the way in, writes on the way out",
+      "Page cache is only for writes (dirty pages awaiting flush)"
+    ],
+    answer: 2,
+    explanation: "Page cache: the kernel uses SPARE RAM to cache disk blocks read from storage. When the same data is needed again, it's served from RAM instead of disk. Write data also passes through page cache (as dirty pages) before being flushed, but the primary mental model is: spare RAM → caches disk reads. The kernel evicts it immediately when apps need RAM."
+  },
+  {
+    section: "§21 Precision: 4096 & Memory",
+    question: "Why does ext4 default its block size to 4096, the same as the memory page size?",
+    options: [
+      "Historical accident — both numbers were chosen independently by different teams",
+      "Regulatory requirement for POSIX compliance",
+      "Alignment: when a filesystem block equals a memory page, each block maps to exactly one page cache entry — no partial-page reads/writes, no wasted cache space, simpler kernel code",
+      "4096 is the minimum block size the hardware supports"
+    ],
+    answer: 2,
+    explanation: "Page cache stores data at page granularity (4 KiB). If filesystem blocks were 8 KiB, a read of 1 block would touch 2 cache pages, complicating alignment. With block = page = 4 KiB: one block = one page = one cache entry. Clean mapping, optimal I/O, simpler invalidation. The block size matching the page size is a deliberate kernel design choice."
+  },
+  {
+    section: "§21 Precision: 4096 & Memory",
+    question: "A JVM process shows VSZ = 12 GB, RSS = 1.2 GB. Should this trigger a memory alert?",
+    options: [
+      "Yes — 12 GB VSZ means the process could consume 12 GB of RAM at any time",
+      "Yes — the 10.8 GB gap between VSZ and RSS indicates swapping",
+      "No — JVMs reserve the full heap upfront as virtual address space (VSZ) but only touch pages that contain live objects (RSS). This is expected and healthy",
+      "Only if RSS is growing over time — a stable RSS regardless of VSZ is fine"
+    ],
+    answer: 2,
+    explanation: "VSZ = virtual address space reserved. JVMs use -Xmx to reserve heap address space upfront (virtual, not physical). RSS = pages actually in RAM (live objects). VSZ 12 GB, RSS 1.2 GB means 10% heap utilization — very healthy. Alert on RSS growing over time (potential heap leak), not on high VSZ."
+  },
+  {
+    section: "§21 Precision: 4096 & Memory",
+    question: "How does the OOM killer choose which process to kill?",
+    options: [
+      "The most recently started process",
+      "The process with the highest PID number",
+      "The process with the highest oom_score, which is based primarily on memory footprint. Tunable via oom_score_adj (-1000 = never kill, +1000 = kill first)",
+      "A random process to avoid deterministic starvation"
+    ],
+    answer: 2,
+    explanation: "oom_score: the kernel calculates a score for each process based mainly on its memory consumption (RSS + swap). The highest score is the victim. Tune: oom_score_adj in /proc/<pid>/oom_score_adj or systemd OOMScoreAdjust=. Set -1000 for critical processes (monitoring agents, databases). Check: cat /proc/<pid>/oom_score"
+  },
+  {
+    section: "§21 Precision: 4096 & Memory",
+    question: "A process writes to a shared page for the first time after fork(). What happens at the kernel level?",
+    options: [
+      "The write fails with ENOMEM until a new page is allocated explicitly",
+      "The kernel pauses both parent and child to synchronize the write safely",
+      "The write triggers a page fault; the kernel copies the shared page, maps the new copy to the writing process, and maps the original to the other process — the write then completes",
+      "The page is marked dirty and flushed to disk before being modified"
+    ],
+    answer: 2,
+    explanation: "COW write fault: CPU detects a write to a read-only (shared) page → hardware page fault → kernel allocates a new physical page, copies content from the shared page, updates the writing process's page table to point to the new page, marks the old page as the other process's private copy → write completes. This is transparent to userspace."
+  },
+  {
+    section: "§21 Precision: 4096 & Memory",
+    question: "What is the precise sequence of events when a process accesses a virtual address for the first time (demand paging)?",
+    options: [
+      "1. Process reads address. 2. Kernel pre-allocates the page. 3. Process reads data.",
+      "1. Process accesses unmapped virtual address. 2. CPU raises hardware page fault exception. 3. Kernel allocates physical frame, maps it into page table. 4. Original instruction retries and succeeds.",
+      "1. Process calls mmap(). 2. Kernel allocates physical memory immediately. 3. Process reads data.",
+      "1. Process reads address. 2. SIGSEGV is raised. 3. Signal handler allocates memory."
+    ],
+    answer: 1,
+    explanation: "Demand paging sequence: (1) process accesses virtual address with no physical backing → (2) CPU raises page fault (hardware exception, not a signal) → (3) kernel's page fault handler runs: allocates physical page, reads from disk/zero-fills if needed, updates page table entry → (4) faulting instruction retries and succeeds transparently. No SIGSEGV unless the address is truly unmapped (not just demand-paged)."
+  },
+
+  // ── Section 21: Precision Drills — D-state Exit Paths ────────────────────
+  {
+    section: "§21 Precision: D-State Exit Paths",
+    question: "Name all three ways a D-state process can exit. Which one requires no reboot and is the primary production fix for hung NFS?",
+    options: [
+      "kill -9, SIGCONT, and reboot. kill -9 is the production fix.",
+      "I/O completes, I/O errors out, and reboot. 'I/O errors out' (umount -f) is the primary no-reboot production fix.",
+      "I/O completes, reboot, and OOM kill. OOM kill is the production fix.",
+      "SIGKILL delivery, I/O timeout, and reboot. SIGKILL is the primary fix."
+    ],
+    answer: 1,
+    explanation: "Three paths — memorize all three: (1) I/O completes normally. (2) I/O errors out: umount -f/umount -l forces the NFS unmount, causing pending syscalls to return EIO/ESTALE — processes unblock without rebooting. (3) Reboot: last resort. Path 2 is the production playbook for dead NFS mounts. Signals (including SIGKILL) are queued until one of these three paths unblocks the process."
+  },
+  {
+    section: "§21 Precision: D-State Exit Paths",
+    question: "You send kill -9 to a D-state process stuck on a dead NFS mount. 90 minutes later the NFS server recovers. What happens?",
+    options: [
+      "Nothing — kill -9 on D-state is silently ignored",
+      "The process was already removed when you ran kill -9",
+      "The SIGKILL was queued for 90 minutes. When the NFS I/O completes (exit path 1), the queued SIGKILL is delivered immediately and the process exits",
+      "The SIGKILL expires after 60 seconds and must be resent"
+    ],
+    answer: 2,
+    explanation: "SIGKILL on D-state is queued in the process's pending signal set — not ignored, not lost, not expired. It waits until the process exits kernel space (when the blocking syscall returns). When NFS recovers and the I/O completes, the syscall returns, the process checks pending signals, finds SIGKILL, and dies immediately."
+  },
+  {
+    section: "§21 Precision: D-State Exit Paths",
+    question: "'The SIGKILL on the D-state process is sent but stuck.' What is the precise correction to this phrasing?",
+    options: [
+      "Correct — 'stuck' is the standard kernel term for pending delivery",
+      "'Sent but stuck' implies the signal might be lost or might not arrive. The precise term is 'queued': the signal is in the pending set and WILL be delivered the instant the blocking syscall returns",
+      "The signal is not sent at all to D-state processes — that's why kill -9 appears to fail",
+      "'Delayed' is more accurate than 'stuck' or 'queued'"
+    ],
+    answer: 1,
+    explanation: "'Stuck' is imprecise — it implies uncertainty about delivery. 'Queued' is the exact kernel mechanism: the signal is placed in the process's pending signal set (checked at every kernel exit point). Delivery is guaranteed — the only question is when the blocking syscall returns. Say 'queued until the syscall returns.'"
+  },
+  {
+    section: "§21 Precision: D-State Exit Paths",
+    question: "What is the difference between umount -f and umount -l for clearing D-state processes?",
+    options: [
+      "They are identical — both force-unmount the filesystem",
+      "umount -f (force): immediately fails all pending I/O to the mount, unblocking D-state processes right away. umount -l (lazy): detaches the mount from the namespace immediately but lets current file operations drain",
+      "umount -f requires root; umount -l works as any user",
+      "umount -l only works on NFS; umount -f works on all filesystem types"
+    ],
+    answer: 1,
+    explanation: "umount -f: forces the unmount immediately and returns ESTALE/EIO to all pending I/O — fastest for clearing D-state. umount -l: disconnects the mount from the directory tree instantly (new accesses fail) but existing file operations can complete — gentler but may leave some processes blocked longer. For clearing D-state quickly, umount -f is the tool."
+  },
+  {
+    section: "§21 Precision: D-State Exit Paths",
+    question: "A storage array's I/O timeout fires after 120 seconds, causing pending writes to fail with EIO. Processes that were in D state immediately unblock. Which of the three D-state exit paths is this?",
+    options: [
+      "Path 1: I/O completes",
+      "Path 2: I/O errors out — the storage timeout caused the kernel to fail the pending I/O with EIO, unblocking the processes",
+      "Path 3: reboot — storage timeouts trigger a kernel panic",
+      "None — storage timeouts don't unblock D-state processes"
+    ],
+    answer: 1,
+    explanation: "Path 2: I/O errors out. The storage timeout causes the block layer to return EIO (I/O error) to the waiting processes. This is the same mechanism as umount -f — the syscall returns with an error instead of completing successfully. D-state processes unblock, receive the error, and continue execution (or crash if they don't handle EIO)."
+  },
+  {
+    section: "§21 Precision: D-State Exit Paths",
+    question: "Why can't you 'just wait' for a D-state process on a dead NFS mount to resolve on its own?",
+    options: [
+      "You can wait — D-state processes resolve within 60 seconds via kernel timeout",
+      "Without a storage timeout, I/O timeout, or manual umount, the D-state process has no way to unblock. It will stay in D state indefinitely — potentially for days or until reboot",
+      "The OOM killer will eventually select D-state processes",
+      "D-state processes automatically switch to S state after 30 seconds"
+    ],
+    answer: 1,
+    explanation: "If the NFS server is dead with no timeout configured (nfs mount option: intr not set, no retrans timeout), the kernel will retry I/O indefinitely — and the process stays in D state indefinitely. D-state is only cleared by an active event (I/O response, error, or reboot). Passive waiting is not a strategy without a configured timeout."
+  },
+  {
+    section: "§21 Precision: D-State Exit Paths",
+    question: "A developer argues: 'If the NFS server comes back up, D-state processes will fix themselves — no action needed.' Is this correct?",
+    options: [
+      "No — once in D state, processes can never self-recover",
+      "Yes — NFS server recovery = I/O completes (exit path 1) = D-state processes unblock automatically. This is completely correct",
+      "Only if the NFS mount was mounted with the 'soft' option",
+      "Only if fewer than 10 processes are in D state"
+    ],
+    answer: 1,
+    explanation: "Correct! If the NFS server recovers and the I/O completes (exit path 1), D-state processes unblock automatically — no intervention needed. This is why NFS 'hard' mounts (which retry indefinitely) can self-recover when the server comes back. The developer is right: D-state is temporary if the I/O eventually resolves."
+  },
+  {
+    section: "§21 Precision: D-State Exit Paths",
+    question: "What command shows what kernel function a D-state process is sleeping in?",
+    options: [
+      "lsof -p <pid> — shows open files and the blocking resource",
+      "strace -p <pid> — attaches and shows the current syscall",
+      "cat /proc/<pid>/stack — shows the kernel call stack; also visible as WCHAN in ps -o pid,stat,wchan,cmd",
+      "netstat -p — shows processes and their network connections"
+    ],
+    answer: 2,
+    explanation: "/proc/<pid>/stack shows the kernel call stack (e.g., nfs_read_page → wait_on_page_locked). WCHAN ('wait channel') shows just the top-level function. Both are read-only and non-invasive. Note: lsof itself can hang when called on processes with FDs on dead NFS mounts — check /proc directly instead."
+  },
+  {
+    section: "§21 Precision: D-State Exit Paths",
+    question: "Load is 32, CPU is idle, you suspect a dead NFS mount. What is the correct sequence of diagnostic steps?",
+    options: [
+      "Reboot the server immediately to clear the D-state processes",
+      "Kill all D-state processes, then investigate the storage",
+      "1) Find D-state procs (ps aux | awk '$8~/^D/'), 2) check what they're blocked on (cat /proc/<pid>/stack or WCHAN), 3) check dmesg for 'nfs: server not responding', 4) umount -f the dead mount — then D-state clears without reboot",
+      "Run iostat to find the bottleneck, then increase the I/O queue depth"
+    ],
+    answer: 2,
+    explanation: "The NFS D-state playbook: confirm D-state procs, identify the blocked resource (WCHAN/stack shows nfs_*), correlate with dmesg ('nfs: server not responding'), then umount -f to trigger path 2 (I/O errors out). Reboot is only if the mount refuses to unmount. kill -9 on D-state is useless until after the unmount."
+  },
+  {
+    section: "§21 Precision: D-State Exit Paths",
+    question: "After umount -f on a dead NFS mount, the D-state processes disappear. A queued SIGKILL was sent earlier. Why did the SIGKILL deliver at this exact moment?",
+    options: [
+      "umount -f internally sends SIGKILL to all blocked processes",
+      "The forced unmount triggered a kernel OOM event",
+      "The forced unmount caused pending I/O to return EIO (path 2: I/O errors out). The processes exited kernel space, checked their pending signal set, found the queued SIGKILL, and it was delivered immediately",
+      "SIGKILL has a 30-second queue lifetime; it happened to expire at that moment"
+    ],
+    answer: 2,
+    explanation: "umount -f triggers path 2: I/O errors out. The blocking NFS syscall returns EIO. The process is now schedulable (exits kernel space). At every kernel exit point, the kernel checks pending signals. It finds the SIGKILL that was queued earlier and delivers it immediately. The process never gets to run userspace code — SIGKILL wins."
+  },
+
+  // ── Section 21: Precision Drills — pid_max & Process Limits ──────────────
+  {
+    section: "§21 Precision: pid_max & Process Limits",
+    question: "A modern Ubuntu 24.04 server has pid_max = 4194304. What SPECIFICALLY set it to this value?",
+    options: [
+      "The Linux kernel 5.x default was changed to 4194304",
+      "The system administrator ran 'sysctl kernel.pid_max=4194304'",
+      "systemd v243+ writes 4194304 to /proc/sys/kernel/pid_max at boot — the kernel's compiled-in default is still 32768",
+      "The cloud provider's image sets this in /etc/sysctl.conf"
+    ],
+    answer: 2,
+    explanation: "The kernel's compiled-in default has NOT changed — it's still 32768 (2^15). systemd v243+ (released ~2019) added a line to its initialization that raises pid_max to 4194304 (PID_MAX_LIMIT = 2^22) at boot. A system running SysVinit, or systemd < v243, still has pid_max = 32768 on the same kernel."
+  },
+  {
+    section: "§21 Precision: pid_max & Process Limits",
+    question: "What are the exact powers of 2 for pid_max = 32768 and pid_max = 4194304?",
+    options: [
+      "32768 = 2^14, 4194304 = 2^21",
+      "32768 = 2^15, 4194304 = 2^22",
+      "32768 = 2^16, 4194304 = 2^23",
+      "32768 = 2^15, 4194304 = 2^21"
+    ],
+    answer: 1,
+    explanation: "32768 = 2^15 (the historical default, also the default ephemeral port base). 4194304 = 2^22 (PID_MAX_LIMIT on 64-bit — systemd's target). Both powers of 2 connect to other Linux magic numbers: 2^15 appears in both pid_max and the ephemeral port range start (32768)."
+  },
+  {
+    section: "§21 Precision: pid_max & Process Limits",
+    question: "fork() fails with EAGAIN. Name all three limits that can cause this — count them before answering.",
+    options: [
+      "Two limits: fs.file-max and pid_max",
+      "One limit: pid_max (the only kernel-enforced process limit)",
+      "Three limits: (1) per-user ulimit -u / RLIMIT_NPROC, (2) kernel-wide pid_max, (3) cgroup pids.max / systemd TasksMax=",
+      "Four limits: pid_max, RLIMIT_NPROC, pids.max, and threads-max"
+    ],
+    answer: 2,
+    explanation: "Exactly three limits cause fork() EAGAIN — enumerate all three: (1) RLIMIT_NPROC: per-user process limit (ulimit -u), most common cause. (2) pid_max: kernel-wide PID table limit. (3) cgroup pids.max: container/service task limit (systemd TasksMax=). fs.file-max causes EMFILE on open(), not EAGAIN on fork()."
+  },
+  {
+    section: "§21 Precision: pid_max & Process Limits",
+    question: "A system running SysVinit (no systemd) has a modern Linux 6.x kernel. What is pid_max?",
+    options: [
+      "4194304 — the modern kernel default regardless of init system",
+      "65536 — the port-space matching default",
+      "32768 — the kernel's compiled-in default, only raised by systemd at boot. Without systemd, it stays at 32768",
+      "Unlimited — without systemd, there is no pid_max enforcement"
+    ],
+    answer: 2,
+    explanation: "pid_max = 32768 on a system without systemd, regardless of kernel version. The kernel source still compiles with PID_MAX_DEFAULT = 32768. systemd's raise-at-boot is a userspace action. Without it, old applications that assumed PID wrapping at 32768 may encounter issues on modern kernels that actually hit the limit."
+  },
+  {
+    section: "§21 Precision: pid_max & Process Limits",
+    question: "What is the difference between RLIMIT_NPROC and pid_max — which typically hits first in a fork bomb?",
+    options: [
+      "pid_max always hits first — it's a lower number",
+      "They are the same limit with different names",
+      "RLIMIT_NPROC (ulimit -u) is per-user and typically much lower than pid_max — it almost always hits first in a fork bomb from a non-root user. pid_max is the system-wide ceiling",
+      "RLIMIT_NPROC only applies to setuid processes"
+    ],
+    answer: 2,
+    explanation: "RLIMIT_NPROC (ulimit -u) limits total processes/threads for a specific UID — often set to 1024-4096 by default. pid_max (4194304 on modern systems) is the system-wide limit. A fork bomb from a normal user hits RLIMIT_NPROC almost immediately, well before pid_max. Check: ulimit -u (current limit), /proc/sys/kernel/pid_max (system ceiling)."
+  },
+  {
+    section: "§21 Precision: pid_max & Process Limits",
+    question: "What is the TCP/UDP port space, and WHY is it 65536 ports — answer with the mechanism, not just the number?",
+    options: [
+      "65536 ports because IANA allocated that many numbers in 1981",
+      "65536 ports because it matches the default pid_max doubled (32768 × 2)",
+      "65536 ports because the TCP and UDP header port field is 16 bits wide — 2^16 = 65536 possible values (0–65535)",
+      "65536 ports because 64K is a round number in network engineering"
+    ],
+    answer: 2,
+    explanation: "The mechanism: TCP/UDP headers allocate 16 bits for the source and destination port fields. 2^16 = 65536 possible values. This is why the answer is '65536 because the header field is 16 bits wide' — not just '65536.' The bit-width of the header field is the root cause; 65536 is the consequence."
+  },
+  {
+    section: "§21 Precision: pid_max & Process Limits",
+    question: "What is the difference between a Linux thread (LWP) and a process in terms of what they share?",
+    options: [
+      "Threads and processes are identical — the kernel sees no difference",
+      "Processes share their address space with children; threads do not",
+      "Threads share the virtual address space and file descriptor table with all threads in the same process. Processes have their own separate address space and FD table",
+      "Threads share only the code segment; processes share nothing"
+    ],
+    answer: 2,
+    explanation: "Process: independent virtual address space, independent FD table, independent signal handlers. Thread (LWP/clone with CLONE_VM|CLONE_FILES): shares virtual address space (same heap, same globals), shares FD table, shares signal handlers. Both are scheduled by the kernel as tasks identically. Threads are 'cheaper' to create (no address space copy) but share memory — bugs in one thread corrupt all."
+  },
+  {
+    section: "§21 Precision: pid_max & Process Limits",
+    question: "A hard link and a symlink to the same file are both deleted. When is the file's data actually freed?",
+    options: [
+      "When the last hard link is deleted",
+      "When the last symlink is deleted",
+      "When the inode's link count reaches zero AND all open file descriptors to the inode are closed",
+      "When the filesystem journal checkpoints the deletion"
+    ],
+    answer: 2,
+    explanation: "Inode data blocks are freed when BOTH conditions are met: (1) link count = 0 (all hard links removed — symlinks don't count toward link count) AND (2) no open FDs referencing the inode. Deleting the last hard link with a process still holding the FD open = file appears deleted but blocks remain allocated (the lsof | grep deleted scenario)."
+  },
+  {
+    section: "§21 Precision: pid_max & Process Limits",
+    question: "You get ENOSPC trying to create a file but df shows 40% disk space free. df -i shows inodes at 100%. What is the root cause and what does 'inode' represent here?",
+    options: [
+      "The filesystem journal is full — resize the journal",
+      "The reserved block percentage is consuming the space df -i shows",
+      "Inode table exhaustion: every file needs an inode (metadata + data block pointers). The inode table is full — no new files can be created even with free data blocks. Fix: delete millions of tiny files consuming inode slots",
+      "The file you're creating is too large for the remaining inode space"
+    ],
+    answer: 2,
+    explanation: "Every file/directory on a Unix filesystem requires one inode (stores metadata: permissions, timestamps, data block pointers). The inode table has a fixed size set at mkfs time. Millions of tiny files (build artifacts, temp files, email queue) exhaust inodes while leaving data blocks free. ENOSPC on both code paths — but 'df -i' at 100% is the diagnosis."
+  },
+  {
+    section: "§21 Precision: pid_max & Process Limits",
+    question: "ENOSPC and a D-state process hang: which one gives you an immediate error, and which one leaves the process silently blocked?",
+    options: [
+      "Both give immediate errors — D-state processes receive ENOSPC when they block",
+      "D-state gives immediate errors; ENOSPC leaves processes silently blocked",
+      "ENOSPC: operation fails immediately with an error the application can handle. D-state hang: process blocks silently in the kernel — no error returned to userspace until I/O resolves. The application has no idea it's stuck",
+      "They behave identically — both cause processes to enter D state"
+    ],
+    answer: 2,
+    explanation: "ENOSPC: the syscall (write, create, etc.) returns immediately with error -ENOSPC. Application gets the error and can handle it. D-state: the syscall does NOT return — the process is suspended in kernel space with no error, no signal, no timeout (unless configured). Userspace never gets a chance to react. This is why D-state hangs are so operationally severe — the application cannot detect or recover from them."
   }
 
 ]; // end ALL_QUESTIONS

@@ -506,3 +506,142 @@ openssl s_client -connect example.com:443 -status 2>/dev/null | grep -A 10 "OCSP
 - "PFS means recording my TLS traffic today won't decrypt it if my private key leaks tomorrow."
 - "OCSP stapling eliminates the per-request CA round-trip and stops leaking your users' browsing to the CA."
 - "mTLS in a service mesh means every east-west call is authenticated and encrypted, no shared secrets needed."
+
+---
+---
+
+# Part 5 — Interview Precision Drills (Round 1 Weak Spots)
+
+## 21. Closing the Gaps — Exact Phrasing Matters
+
+These are the specific answers that slipped in Round 1. Each entry has the trap answer and the precise correction.
+
+---
+
+### Load Average: R + D Only. Never S.
+
+**The trap:** adding S (sleeping) under pressure.
+
+**The rule:** `load average = processes in R + processes in D`, averaged over 1, 5, and 15 minutes.
+
+| State | Counts? | Why |
+|---|---|---|
+| R — running/runnable | **YES** | Actively wants CPU |
+| D — uninterruptible sleep | **YES** | Blocked in kernel syscall; real resource pressure |
+| S — interruptible sleep | **NO** | Waiting for an event; not competing for anything |
+| Z — zombie | **NO** | Already dead; holds no resources |
+| T — stopped | **NO** | Suspended; not competing |
+
+**Load 45, CPU 92% idle** → ~45 processes in D, stuck on I/O — not CPU pressure at all.
+
+**Say it cold:** *"Load average counts R plus D only. S doesn't count. High load with idle CPU means the load is all D-state: look at storage, not the scheduler."*
+
+---
+
+### Orphan vs Zombie vs Defunct — Precise Distinctions
+
+**The trap:** calling a living, in-flight process "defunct."
+
+| Term | Alive? | Resources | Parent | Fix |
+|---|---|---|---|---|
+| **Zombie (Z / defunct)** | **No** — exited | PID slot + tiny exit-status struct | Alive but hasn't called wait() | Repair/restart parent so it calls wait() |
+| **Orphan** | **Yes** — still executing | Full: CPU, memory, FDs | Dead — re-parented to init/PID 1 | Nothing; init reaps it on exit |
+
+**The mid-request scenario:** parent killed while child handles an HTTP request → child is an **orphan** (alive). It is NOT defunct. Defunct = already exited.
+
+**Verb precision:** you don't *kill* zombies — they're dead. You **reap** them. The mechanism: fix the parent so it calls wait().
+
+---
+
+### 4096: Page Size FIRST, Block Size Second
+
+**The trap:** leading with "filesystem block size."
+
+**First sentence:** *"4096 bytes = 2^12 = 4 KiB — the memory page size."*
+
+Second sentence: *"ext4/xfs also default their block size to 4096, aligned to the page size so each filesystem block maps to exactly one page cache entry."*
+
+The page size is foundational: it governs demand paging, COW in fork(), the page cache, and allocator alignment. The filesystem block size matching it is a deliberate consequence.
+
+**Demand paging (precise):** Virtual pages are mapped but NOT backed by physical RAM until first access. CPU raises a page fault → kernel allocates a frame and maps it → instruction retries. This is why fork() is cheap: COW shares all pages until a write occurs.
+
+---
+
+### D-State Exit Paths: All Three
+
+**The trap:** giving only one (I/O completes).
+
+**Recite all three every time:**
+1. **I/O completes** — blocking syscall finishes normally
+2. **I/O errors out** — syscall fails: storage timeout, `umount -f`, `umount -l`
+3. **Reboot**
+
+SIGKILL is **queued** (not lost, not stuck) — held in the pending signal set and delivered the instant the syscall returns. Without path 1 or 2, it waits indefinitely.
+
+**Production NFS playbook:** `umount -f /mnt/nfs` (force) or `umount -l` (lazy detach) → pending I/O returns EIO/ESTALE → D-state processes unblock → queued SIGKILLs deliver.
+
+---
+
+### Signal Queueing: "Queued Until the Syscall Returns" — Not "Sent But Stuck"
+
+**The trap:** *"sent but stuck."*
+
+**"Stuck"** implies the signal might be lost. **"Queued"** is exact: it is held in the pending signal set, guaranteed to deliver the moment the process exits kernel space.
+
+**Full sentence:** *"SIGKILL on a D-state process is queued — not ignored, not lost. It delivers the instant the blocking syscall returns. Without I/O completing or erroring, the queue waits indefinitely."*
+
+---
+
+### pid_max: systemd Raises It at Boot — Not "Modern Kernel"
+
+**The trap:** *"modern systems default to 4194304"* or *"the kernel uses 2^22."*
+
+**Precise chain:**
+- Kernel compiled-in default: **32768 (2^15)** — still in the source today
+- **systemd v243+ (~2019) writes 4194304 to `/proc/sys/kernel/pid_max` at boot** — a runtime sysctl
+- 4194304 = 2^22 = PID_MAX_LIMIT — the kernel's hard ceiling on 64-bit
+
+A box running SysVinit has pid_max = 32768 on a modern kernel. Verify on any box: `cat /proc/sys/kernel/pid_max`
+
+---
+
+### Second-Tier Precision — The Enumeration Traps
+
+**Always count before answering:** *"There are three ways…"*, *"Two root causes…"* — state the count first, then enumerate all of them.
+
+**fork() EAGAIN — three limits (no dropping):**
+1. Per-user `ulimit -u` (RLIMIT_NPROC)
+2. Kernel-wide `pid_max`
+3. cgroup `pids.max` (systemd `TasksMax=`)
+
+**Port space — say "16-bit field," not "goes up to 65536":**
+*"The TCP/UDP header port field is 16 bits wide → 2^16 = 65536."* Mechanism first, number second.
+
+**Hard link vs symlink — say "inode-level" vs "path-level":**
+Hard link = same inode (inode-level). Symlink = file containing a path string (path-level, can dangle).
+
+**OOM victim — oom_score, not random:**
+Highest `oom_score` (memory footprint). Tune via `oom_score_adj` (-1000 = never kill).
+
+**ENOSPC vs D-state hangs — different failure modes:**
+- Disk blocks full: `df` at 100%, operations fail immediately with ENOSPC
+- Inode exhaustion: `df -i` at 100%, creates fail with ENOSPC even with free blocks
+- Dead mount D-state: processes **hang** indefinitely, never get an error — load spikes, `ps` shows D
+
+**RSS vs VSZ — JVM is not leaking:**
+Large VSZ (heap reserved) + small RSS (pages touched) = healthy. Alert on RSS growth over time, not VSZ magnitude.
+
+**Process vs thread:**
+Threads share the virtual address space and FD table with siblings. Processes do not. Both are scheduled by the kernel as tasks.
+
+---
+
+### Interview Habit Reminders
+
+| Trap | Correction |
+|---|---|
+| **Dropped enumeration** | Count first: *"There are three…"* — then name all of them |
+| **The graft** | Finish the direct answer before adding context |
+| **The substitution** | If blanking: say *"I'm blanking"* — don't substitute an adjacent fact |
+| **Cause vs mechanism** | If asked for a formula or count, give it first. War story is dessert, not the meal |
+| **Verb looseness** | Zombies are **reaped** not killed. Port fields have **width** (bits) not length |
