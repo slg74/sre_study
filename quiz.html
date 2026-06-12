@@ -2654,6 +2654,128 @@ const ALL_QUESTIONS = [
     ],
     answer: 2,
     explanation: "Metrics vs logs: metrics are pre-aggregated time-series (p99 latency, error rate per second) — querying 'what is the error rate right now' is O(1). Logs are individual events — answering the same question requires scanning potentially millions of log lines, adding query latency and cost. Use: metrics for alerting and dashboards (continuous health), logs for root-cause analysis of specific incidents, traces for distributed request flows."
+  },
+
+  // ── Section 22: System Design (continued) ────────────────────────────────
+  {
+    section: "Section 22: System Design",
+    question: "You have a 5-node distributed cache. Adding a 6th node causes massive cache miss storms with naive modulo hashing (key % N). Why does consistent hashing solve this, and what are virtual nodes (vnodes)?",
+    options: [
+      "Consistent hashing replicates every key to all nodes, so no misses occur on rebalance",
+      "Naive modulo: adding 1 node remaps ~(N-1)/N keys — nearly everything misses. Consistent hashing maps keys and nodes onto a ring; only keys between the new node and its predecessor move (~1/N keys). Virtual nodes spread each physical node across many ring positions, smoothing load imbalance when N is small",
+      "Consistent hashing encrypts keys to prevent collisions, reducing misses",
+      "They perform identically — 'consistent' refers to data consistency, not rebalancing cost"
+    ],
+    answer: 1,
+    explanation: "Naive modulo: 5→6 nodes remaps ~83% of keys = cache miss storm. Consistent hashing: keys sit on a ring. Adding a node only displaces keys between it and its ring predecessor (~1/N ≈ 17%). Vnodes (virtual nodes): each physical node owns multiple ring positions (e.g., 150 tokens). This distributes load more uniformly and limits data movement during failure recovery. Used by: Cassandra, DynamoDB, Redis Cluster."
+  },
+  {
+    section: "Section 22: System Design",
+    question: "You're sharding a user database by user_id. Compare range-based vs hash-based sharding. Which causes 'hot shard' problems and under what access pattern?",
+    options: [
+      "Hash sharding causes hot shards because birthday paradox collisions cluster keys on one shard",
+      "Range sharding causes hot shards when access is uneven — e.g., new signups cluster in the high-ID range, or time-series data makes today's shard absorb all writes. Hash sharding distributes writes uniformly but makes range queries scatter-gather across all shards",
+      "Both strategies cause equal hot-shard probability — it depends only on data volume, not access pattern",
+      "Hot shards only occur in hash sharding because hash functions are non-deterministic"
+    ],
+    answer: 1,
+    explanation: "Range sharding (shard by ID or date range): easy range queries, but access skew concentrates traffic. A SaaS app where 10% of users generate 80% of traffic all land on the same shard. Hash sharding (hash(user_id) % N): even distribution for random access, but range queries (users A-D) require querying every shard. Mitigation: directory-based sharding maps entity → shard explicitly, enabling rebalancing without changing the hash. Most cloud DBs (DynamoDB, Spanner) use hash-based internally."
+  },
+  {
+    section: "Section 22: System Design",
+    question: "An e-commerce order spans 3 services: Order, Payment, Inventory. You need all-or-nothing semantics without 2PC (distributed transactions). What pattern achieves this, and what is its critical failure mode?",
+    options: [
+      "Use a distributed lock held across all three services for the transaction duration",
+      "Use 2PC with a transaction coordinator — it is the only correct solution for cross-service atomicity",
+      "Use the Saga pattern: each service executes a local transaction and emits an event; on failure, compensating transactions undo prior committed steps. Critical failure: a compensating transaction can itself fail, leaving the system in a partially-compensated state requiring manual intervention",
+      "Use event sourcing — replay the full event log to restore consistency on failure"
+    ],
+    answer: 2,
+    explanation: "Saga: local tx → event → next service. Failure → compensating tx (CancelPayment, ReleaseInventory). Two flavors: choreography (services react to events) vs orchestration (a Saga Orchestrator directs each step). 2PC is avoided because it holds cross-service locks, causing deadlocks and availability loss. Critical risk: compensating transactions are not guaranteed to succeed — idempotency and dead-letter queues are essential. Non-compensatable operations (e.g., sending an email) become 'pivot transactions' and must be placed last in the Saga."
+  },
+  {
+    section: "Section 22: System Design",
+    question: "Your HTTP API is receiving 10× normal traffic. Explain the difference between load shedding and backpressure, and which is appropriate for an HTTP API that can't slow down callers.",
+    options: [
+      "They are the same — backpressure is the Kubernetes term for load shedding",
+      "Backpressure signals upstream producers to slow down (works for cooperative data pipelines). Load shedding drops requests above a threshold (appropriate for HTTP APIs where callers can't be slowed down). Return HTTP 503 with Retry-After header; shed lowest-priority traffic first",
+      "Backpressure is always safer because it never loses requests, unlike load shedding",
+      "Load shedding is for batch workloads; backpressure is for real-time streaming only"
+    ],
+    answer: 1,
+    explanation: "Backpressure works when producers cooperate (a Kafka consumer telling a producer to pause). HTTP clients don't respond to 'slow down' signals — they retry or fail independently. Load shedding: reject requests exceeding a concurrency/rate threshold with 503 + Retry-After. Priority shedding: drop background analytics before user-facing reads. Pair with rate limiting at the edge (API gateway) so the application layer rarely needs to shed load. The goal: protect internal resources (DB connections, CPU) from saturation by failing fast at the boundary."
+  },
+  {
+    section: "Section 22: System Design",
+    question: "A service opens a new database connection per HTTP request. Under load, it hits 'FATAL: too many connections.' What is the root cause and correct architectural fix?",
+    options: [
+      "The database server is out of disk space — increase EBS volume size",
+      "Opening a new TCP + TLS + auth handshake per request takes 10-100ms and each connection uses ~5-10MB of DB server RAM. Under load you exhaust connection limits before CPU. Fix: a connection pool. Size it at approximately (num_CPU_cores × 2) for I/O-bound queries, not max RPS",
+      "Switch to UDP for database connections to remove handshake overhead",
+      "Add more read replicas — the primary is connection-saturated because it handles too many writes"
+    ],
+    answer: 1,
+    explanation: "Each Postgres connection forks a backend process (~5-10MB RAM). Per-request connections: 1000 RPS = 1000 simultaneous connections = 5-10GB RAM, plus the 10-100ms setup cost per request. Connection pool: pre-open N connections, hand them to handlers, reclaim on completion. Pool sizing: small pool → requests queue. Large pool → DB OOM. Rule of thumb: pool_size = num_cores * 2 (PostgreSQL recommendation). PgBouncer or ProxySQL add pooling as a sidecar without application changes — essential when running many app instances."
+  },
+  {
+    section: "Section 22: System Design",
+    question: "UserService calls NotificationService via synchronous REST after user registration. NotificationService has 0.5% error rate. What is the compounded business impact, and how does async messaging fix it?",
+    options: [
+      "Synchronous REST is always correct — it confirms notification delivery before returning to the user",
+      "A 0.5% NotificationService error rate propagates directly into registration failures. Async decouples availability: UserService publishes to a queue (SQS/Kafka), returns success immediately. NotificationService consumes and retries independently. Sync is correct only when the caller needs the response data or the operation must be atomic",
+      "Use gRPC streaming — it provides the benefits of both sync and async simultaneously",
+      "The error rates are independent — a 0.5% downstream error has no impact on upstream success rate"
+    ],
+    answer: 1,
+    explanation: "Sync dependency chain: if A calls B calls C, and each has 99.9% uptime, combined availability = 0.999^3 = 99.7%. NotificationService at 99.5% drags registration success to 99.5%. Async (message queue): UserService publishes event and returns HTTP 200. NotificationService processes asynchronously, retrying on failure. Trade-off: notifications arrive seconds later (eventual delivery). Use sync when: response data is needed before returning, operation is atomic (payment authorization). Use async when: the operation is a side effect, availability isolation matters more than synchrony."
+  },
+  {
+    section: "Section 22: System Design",
+    question: "You deploy a bug fix to a JS bundle. CDN edge nodes globally cached it with Cache-Control: max-age=31536000 (1 year). How do you ensure users get the new version without purging the CDN or lowering all asset TTLs?",
+    options: [
+      "Send a PURGE request to every CDN PoP globally — propagates within seconds",
+      "Deploy to a new subdomain — CDN caching is domain-scoped, so a new domain bypasses cache",
+      "Content-addressed filenames: embed a hash of file contents in the filename (app.a3f9b2.js). Changed file = new hash = new URL = cache miss at CDN = new file served. The HTML entry point keeps a short TTL (60s). Immutable content gets permanent TTL; the mutable entry point gets a short TTL",
+      "Set Cache-Control: no-store on the new deployment — CDNs respect this header change immediately"
+    ],
+    answer: 2,
+    explanation: "Global CDN purge propagation is 10-60 seconds and non-atomic — some users get old, some get new during the window. Cache-busting with content hashes eliminates this permanently: app.a3f9b2.js and app.c4d8a1.js are different URLs, so the old version never needs invalidation — it simply becomes unreferenced. The HTML/entry point has a short TTL (60s) so it updates quickly after deploy; all other assets are immutably cached forever. Webpack and Vite do this by default. CDN purge is reserved for emergency content removal (leaked data, legal takedown)."
+  },
+  {
+    section: "Section 22: System Design",
+    question: "You implement distributed leader election using a database boolean flag (is_leader=true). What is the critical failure mode, and what is the correct solution?",
+    options: [
+      "Database flag leader election has no failure modes — it is the recommended approach",
+      "The flag causes split-brain: two nodes can race to read flag=false and both write flag=true. Or a crashed leader doesn't clear the flag, blocking all future elections. Fix: use a distributed coordination service (etcd, Consul) with a lease — a TTL-based lock that auto-expires on crash, with atomic compare-and-swap preventing races",
+      "Split-brain only affects stateful services — job schedulers are stateless and immune",
+      "Add a second database to store the flag — dual-write eliminates the race condition"
+    ],
+    answer: 1,
+    explanation: "DB flag race: Node A reads is_leader=false, Node B reads is_leader=false, both write is_leader=true → two leaders → dual job execution, data corruption. Proper leader election: etcd/Consul lease with TTL (e.g., 10s). Leader renews every 5s. Crash → lease expires after 10s → re-election. Atomic CAS ensures only one node wins. Max double-leader window = lease TTL. Libraries: Kubernetes leader-election client-go package, Curator (ZooKeeper). Redis Redlock works but has edge cases with clock skew — prefer purpose-built coordination stores for critical workloads."
+  },
+  {
+    section: "Section 22: System Design",
+    question: "When is vertical scaling (larger instance) the correct choice over horizontal scaling (more instances), despite horizontal being the general goal?",
+    options: [
+      "Always choose horizontal — vertical scaling has no valid use cases in modern cloud infrastructure",
+      "Vertical is correct when: the workload cannot be distributed (single-writer databases with non-shardable schema, stateful apps with in-process session state, monoliths with global locks). Also as a stop-gap: vertical is operationally faster than re-architecting for horizontal when a production incident is happening now",
+      "Vertical is always better for databases; horizontal is always better for stateless services",
+      "Vertical scaling is preferred because it eliminates the need for a load balancer"
+    ],
+    answer: 1,
+    explanation: "Horizontal scaling requires the workload to be stateless or the state to be distributed. Blockers: write-leader databases (one endpoint regardless of replica count), session-sticky apps (user state in local memory), legacy code with global mutexes. Vertical hits a hard ceiling (largest EC2 instance) but is operationally simpler — one machine, no distributed state, no load balancer. SRE decision: is the bottleneck a single machine's resources (vertical) or aggregate throughput beyond what any one machine can handle (horizontal)? Execute vertical for immediate relief; design horizontal as the long-term architecture."
+  },
+  {
+    section: "Section 22: System Design",
+    question: "Your team has 43.2 minutes of monthly error budget (99.9% SLO). A 30-minute incident just resolved. A developer wants to deploy a risky DB migration in 2 hours. What is the correct SRE response?",
+    options: [
+      "Veto — any remaining budget must be preserved for future unplanned incidents",
+      "Approve immediately — 13.2 minutes remains, which is sufficient for any migration",
+      "13.2 minutes of budget remains. Approve if rollback is fast and well-tested (sub-5 min); the risk is bounded. Decline if rollback could take 20+ minutes — a failed migration would breach the SLO and potentially trigger SLA penalties. Use error budget explicitly as the risk quantification tool, not arbitrary SRE caution",
+      "Error budgets only govern availability incidents — planned maintenance is exempt and always approved"
+    ],
+    answer: 2,
+    explanation: "Error budget = 1 − SLO target. At 99.9%: 43.2 min/month. After 30-min incident: 13.2 min remains. The SRE error budget framework: spend budget on risky changes during high-budget periods; protect budget when low. With 13.2 min left and a risky migration: fast rollback (< 5 min) = acceptable risk, deploy. Slow rollback (> 13.2 min) = could breach SLO, negotiate delay or reduce risk (shadow test, canary). Error budget gives SREs a quantitative basis to push back on product teams — not 'no because risky,' but 'no because 13.2 minutes of budget cannot absorb a 20-minute rollback.'"
   }
 
 ]; // end ALL_QUESTIONS
