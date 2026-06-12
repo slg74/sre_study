@@ -645,3 +645,238 @@ Threads share the virtual address space and FD table with siblings. Processes do
 | **The substitution** | If blanking: say *"I'm blanking"* — don't substitute an adjacent fact |
 | **Cause vs mechanism** | If asked for a formula or count, give it first. War story is dessert, not the meal |
 | **Verb looseness** | Zombies are **reaped** not killed. Port fields have **width** (bits) not length |
+
+---
+---
+
+# Part 6 — System Design
+
+## 22. System Design for SREs
+
+System design interviews test whether you think in trade-offs, not textbook patterns. For every design decision, state: *what you chose, what you gave up, and why that's the right call for this context.* Reliability is never free — it costs complexity, latency, or money.
+
+---
+
+### The SRE Framing (say this first)
+
+Before drawing boxes: *"I want to understand the reliability requirements first — what's the expected SLO, what's the cost of downtime, and are we more read-heavy or write-heavy?"*
+
+Every design has three SRE questions underneath it:
+1. **Where does it fail?** (single points of failure, blast radius)
+2. **How fast do you know?** (observability, alerting latency)
+3. **How fast do you recover?** (RTO, rollback path, runbook)
+
+---
+
+### High Availability Patterns
+
+**The core principle:** eliminate single points of failure at every layer. Redundancy costs money; SPOFs cost incidents.
+
+| Pattern | What it gives you | What it costs |
+|---|---|---|
+| **N+1 redundancy** | One failure is invisible to users | ~2× capacity cost |
+| **Active-active** | Full capacity even during failure; no failover delay | State sync complexity, conflict resolution |
+| **Active-passive** | Simpler state management; one source of truth | Failover delay (DNS TTL + health check interval); wasted standby capacity |
+| **Multi-AZ** | Survives AZ outage; AWS/GCP/Azure default for HA | Replication latency; cross-AZ data transfer costs |
+| **Multi-region** | Survives full region outage | Latency for global consistency; dramatically more expensive |
+
+**Health checks + automatic failover:** load balancers and DNS (Route 53 health checks) must detect unhealthy instances and remove them from rotation faster than your error budget allows. Tune: check interval, unhealthy threshold, response timeout.
+
+---
+
+### Rate Limiting
+
+**Why it matters:** without rate limiting, one misbehaving client (or a DDoS) can take down your entire service.
+
+**Algorithms:**
+
+| Algorithm | How it works | Best for |
+|---|---|---|
+| **Token bucket** | Bucket refills at fixed rate; request costs a token. Allows burst up to bucket capacity | APIs that should allow short bursts (default choice) |
+| **Leaky bucket** | Requests drain at fixed rate regardless of arrival pattern | Smoothing traffic for downstream services with no burst tolerance |
+| **Fixed window counter** | Count reqs per time window (e.g., per minute). Simple but boundary-exploit: 200 reqs in the last second of minute 1 + 200 in first second of minute 2 = 400 in 2 seconds | Simple cases where boundary gaming isn't a concern |
+| **Sliding window log** | Exact timestamps per request; count reqs in the rolling last N seconds | Precise rate enforcement; high memory cost per user |
+| **Sliding window counter** | Approximate hybrid of fixed window + previous window weighting | Best trade-off at scale: ~0.003% error rate vs exact, far less memory than log |
+
+**Distributed rate limiting problem:** rate limit state must be shared across all gateway instances.
+- **Centralized counter (Redis):** consistent but adds ~1ms network hop per request; Redis becomes a bottleneck + SPOF
+- **Local + async sync:** each instance tracks its own count, syncs periodically. Allows temporary over-admission (~15% at low sync frequency) — acceptable for most APIs
+
+**Where to enforce:** API gateway (coarse, protects infra), then per-service (finer, protects individual microservices). Two layers beats one.
+
+---
+
+### Caching
+
+**The golden rule:** cache is a performance optimization, not a source of truth. Always ask: *what is the read/write ratio, how stale is tolerable, and what breaks if the cache is wrong?*
+
+**Write strategies:**
+
+| Strategy | How it works | Durability | Write latency |
+|---|---|---|---|
+| **Write-through** | Write hits cache AND storage synchronously; cache always consistent | High (data in storage immediately) | Slow (two writes) |
+| **Write-back (write-behind)** | Write to cache only; flush to storage asynchronously | Risk of data loss on cache failure | Fast (one write) |
+| **Write-around** | Write bypasses cache, goes directly to storage; cache populated on next read | High | Fast; cold cache on first read |
+
+**Read strategies:**
+- **Cache-aside (lazy loading):** app checks cache → on miss, reads storage, populates cache. Most common. Cache only contains what was actually read.
+- **Read-through:** cache layer handles the miss automatically. Simpler app code; first request always slow.
+
+**Eviction policies:**
+- **LRU (Least Recently Used):** evict the item not accessed for the longest time. Works well for temporal locality.
+- **LFU (Least Frequently Used):** evict least accessed over time. Better for stable popular items.
+- **TTL:** expire after a fixed time regardless of access. Simple; prevents stale data accumulation.
+
+**The thundering herd problem:** cache entry expires → thousands of requests simultaneously hit the database before any response can repopulate the cache.
+- **Solutions:** probabilistic early expiration (re-cache slightly before TTL expires, probabilistically), mutex lock on cache miss (only one request fetches; others wait), background refresh, jittered TTLs
+
+**Consistent hashing:** for distributed caches, consistent hashing minimises key redistribution when nodes are added/removed — only `k/n` keys move (vs all keys with modulo hashing).
+
+---
+
+### Circuit Breakers
+
+**Why:** without circuit breakers, a slow or failing dependency causes your service to accumulate slow threads, exhaust connection pools, and cascade the failure upstream.
+
+**Three states:**
+
+```
+CLOSED (normal) ──→ failure rate > threshold ──→ OPEN (fail fast)
+                                                      │
+                                        after timeout ↓
+                                               HALF-OPEN (test)
+                                          ┌── test request fails ──→ OPEN
+                                          └── test request succeeds ──→ CLOSED
+```
+
+| State | What happens | Transitions |
+|---|---|---|
+| **Closed** | Requests flow normally; failures counted | → Open when error rate exceeds threshold (e.g., 50% over 10s) |
+| **Open** | Fail fast — requests return error immediately, no call to dependency | → Half-open after a configured timeout (e.g., 30s) |
+| **Half-open** | Allow one test request through | → Closed if it succeeds; → Open if it fails |
+
+**SRE value:** circuit breakers turn a cascading failure into a fast, bounded failure. Callers get immediate errors (400ms) instead of hanging (30s timeout), freeing threads.
+
+**Fallback strategies:** return cached/stale data, return a default response, shed the feature entirely. Match the fallback to what users can tolerate.
+
+---
+
+### Database Scaling
+
+**Decision tree — apply in order:**
+
+1. **Index and query-optimize first** — most "slow database" problems are missing indexes or N+1 queries, not capacity
+2. **Vertical scale** — fastest, easiest, but has a ceiling and requires downtime on some engines
+3. **Read replicas** — for read-heavy workloads (>80% reads). Async replication → eventual consistency on reads. Can't help write throughput.
+4. **Connection pooling (PgBouncer, RDS Proxy)** — essential before any horizontal scaling when Lambda/ECS are involved
+5. **Caching layer (Redis, Memcached)** — offload hot reads entirely from the DB
+6. **Sharding** — for write-heavy workloads or datasets too large for one box. High complexity: cross-shard queries, rebalancing, hotspots. Last resort.
+7. **OLAP separation** — heavy analytics queries don't belong in your OLTP database. Route to a data warehouse (Redshift, BigQuery) or read replica with ETL.
+
+**Sharding key selection:** choose a key with high cardinality and even distribution. User ID is common. Avoid time-based keys (all writes go to the "latest" shard — a hotspot).
+
+**The 2-billion-row table problem:** before sharding, diagnose: look at the query execution plan (`EXPLAIN ANALYZE`), identify the bottleneck (full table scan, lock contention, I/O), then consider: partitioning by range/list (less complexity than sharding, handled by the DB), archiving old data, or denormalisation.
+
+---
+
+### Message Queues & Delivery Semantics
+
+**Three delivery guarantees:**
+
+| Guarantee | How | When to use |
+|---|---|---|
+| **At-most-once** | Fire and forget; no retry | Logging, telemetry — losing a message is acceptable |
+| **At-least-once** | Retry until acknowledged; may deliver duplicates | Default for most work queues; **requires idempotent consumers** |
+| **Exactly-once** | Transactional producer + idempotent consumer + dedup. High overhead | Payments, inventory — duplicates are business-critical |
+
+**Idempotency is the key insight:** if your consumer is idempotent (processing the same message twice has no extra effect), then at-least-once delivery is effectively exactly-once. Design consumers to be idempotent first; exactly-once infrastructure second.
+
+**Kafka-specific:** partitions provide ordering (within a partition, not across). Consumer groups allow horizontal scaling of consumers — each partition assigned to one consumer in the group. On rebalance (consumer added/removed), partitions are reassigned — in-flight messages must be handled.
+
+**Dead letter queue (DLQ):** messages that fail processing N times go to a DLQ for manual investigation. Without a DLQ, poison pill messages block the entire queue indefinitely.
+
+---
+
+### Deployment Patterns
+
+| Pattern | Traffic cutover | Rollback | Extra infra | Best for |
+|---|---|---|---|---|
+| **Rolling** | Gradual (instance by instance) | Slow (redeploy old version) | None | Low-risk changes, minimal infra |
+| **Blue/Green** | Instant (DNS/LB flip) | Instant (flip back) | 2× capacity | Zero-downtime deploys; fast rollback critical |
+| **Canary** | Gradual (% of traffic) | Fast (shift % back to 0) | Small extra capacity | Risky changes; validate on real traffic before full rollout |
+| **Feature flags** | Per-user/cohort | Instant (toggle off) | None (logic in code) | Decouple deploy from release; A/B testing |
+
+**Blue/green ops detail:** new version deployed to green (idle). Load balancer or Route 53 weighted routing switched to green. Blue stays live for ~15 min for instant rollback. After validation, blue is decommissioned or becomes the next green.
+
+**Canary detail:** route 1% → 5% → 25% → 100% traffic, watching error rates and latency at each step. Automated promotion/rollback based on SLO burn rate is the mature implementation.
+
+---
+
+### Disaster Recovery
+
+**RTO and RPO are the two numbers every DR design must answer:**
+
+- **RTO (Recovery Time Objective):** maximum tolerable downtime — *"how long can we be down?"*
+- **RPO (Recovery Point Objective):** maximum tolerable data loss — *"how much data can we lose?"*
+
+**DR tiers (cost vs speed trade-off):**
+
+| Tier | RTO | RPO | What's running | Relative cost |
+|---|---|---|---|---|
+| **Backup & restore** | Hours–days | Hours (last backup) | Nothing in DR region | Lowest |
+| **Pilot light** | ~1 hour | Minutes | Core DB replication only; everything else off | Low |
+| **Warm standby** | Minutes | Seconds | Scaled-down replica of full stack | Medium |
+| **Active-active** | Near zero | Near zero | Full production in both regions | Highest |
+
+**Operationalize it:** DR that is never tested is not DR — it is a hope. Test failover on a schedule (game days, chaos engineering). The only RTO number that matters is the one you measured during a real drill.
+
+---
+
+### CAP Theorem
+
+During a **network partition**, a distributed system must choose:
+- **Consistency (CP):** all nodes see the same data; some requests may fail or block
+- **Availability (AP):** all requests receive a response; different nodes may return stale data
+
+**No partition = no trade-off** — you can have both C and A when the network is healthy. The trade-off only applies during partition events.
+
+| System | Choice | Example |
+|---|---|---|
+| Traditional RDBMS (single node) | CA (no partition tolerance) | PostgreSQL, MySQL |
+| Distributed SQL | CP | Google Spanner, CockroachDB |
+| Key-value stores (eventual consistency) | AP | DynamoDB (default), Cassandra, DynamoDB streams |
+| Coordination services | CP | ZooKeeper, etcd |
+
+**SRE framing:** don't memorise which quadrant; reason through it. *"For a payments service, consistency is non-negotiable — I'd accept brief unavailability over a double-charge. For a shopping cart, stale data is acceptable — I'd rather the user can add items than block on a partition."*
+
+---
+
+### Observability at Scale
+
+**Three pillars (and when each matters):**
+
+| Pillar | What it answers | Storage | Cardinality |
+|---|---|---|---|
+| **Metrics** | *Is the system healthy? Trend over time?* | Time-series DB (Prometheus, CloudWatch) | Low — pre-aggregated |
+| **Logs** | *What exactly happened on this request?* | Object store / ELK | High — one entry per event |
+| **Traces** | *Why was THIS request slow across microservices?* | Distributed trace store (Jaeger, X-Ray) | High — per-request spans |
+
+**Metric ingestion at scale:** streaming aggregation (count/sum/histogram buckets computed at collection time) reduces storage by orders of magnitude vs storing raw events. Prometheus scrapes; StatsD/OpenTelemetry push. High cardinality labels (user IDs, request IDs in metrics) kill time-series databases — don't do it.
+
+**SLO-based alerting (burn rate alerts):** alert when you're consuming the error budget too fast, not when a threshold is crossed. A 1% error rate at 3am is fine; a 1% error rate consuming 2× your daily budget in 1 hour is a page.
+
+**Alert fatigue kills on-call:** every alert must be: actionable (there's something you can do), urgent (it can't wait until morning), and novel (not already being handled). Tune aggressively — a noisy alert is worse than no alert.
+
+---
+
+### System Design One-Liners
+
+- "The circuit breaker turns a cascading failure into a fast, bounded failure — callers get 400ms errors instead of 30-second timeouts."
+- "At-least-once delivery with idempotent consumers gives you exactly-once semantics without exactly-once overhead."
+- "Read replicas solve read scale; sharding solves write scale. If you're not write-bound, don't shard."
+- "Blue/green gives you a rollback in seconds; canary gives you blast-radius control. Use canary when you're not confident; blue/green when speed of rollback is critical."
+- "RTO is how long you can be down; RPO is how much data you can lose. Design the system to meet both, then test it — untested DR is just a plan."
+- "Consistent hashing means adding a cache node only moves k/n keys instead of rehashing everything."
+- "The thundering herd hits the database the moment a popular cache key expires — solve it with probabilistic refresh or a mutex, not by making TTLs longer."
+- "High cardinality in metrics labels (user IDs, trace IDs) will OOM your Prometheus in production — aggregate before ingesting."
+- "CAP trade-off only matters during a partition — reason from the business cost of stale data vs unavailability, not the acronym."

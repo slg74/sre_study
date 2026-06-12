@@ -2506,6 +2506,129 @@ const ALL_QUESTIONS = [
     ],
     answer: 2,
     explanation: "ENOSPC: the syscall (write, create, etc.) returns immediately with error -ENOSPC. Application gets the error and can handle it. D-state: the syscall does NOT return — the process is suspended in kernel space with no error, no signal, no timeout (unless configured). Userspace never gets a chance to react. This is why D-state hangs are so operationally severe — the application cannot detect or recover from them."
+  },
+
+
+  // ── Section 22: System Design ─────────────────────────────────────────────
+  {
+    section: "Section 22: System Design",
+    question: "A circuit breaker is in the OPEN state. What is happening to incoming requests, and what triggers the transition to HALF-OPEN?",
+    options: [
+      "Requests are queued and retried; transitions to half-open when the queue drains",
+      "Requests fail fast immediately (no call to the dependency); after a configured timeout, one test request is allowed through to probe recovery",
+      "Requests are routed to a fallback service; transitions when fallback also fails",
+      "Requests are throttled to 10% of normal rate to test if the dependency recovers"
+    ],
+    answer: 1,
+    explanation: "OPEN state = fail fast. No requests reach the failing dependency — they return an error immediately, preventing thread/connection pool exhaustion. After a timeout (e.g., 30s), the circuit moves to HALF-OPEN and allows one probe request. Success → CLOSED (normal). Failure → back to OPEN. This turns cascading failures into fast, bounded failures."
+  },
+  {
+    section: "Section 22: System Design",
+    question: "What is the difference between write-through and write-back (write-behind) caching, and when would you accept the risk of write-back?",
+    options: [
+      "Write-through writes to storage first then cache; write-back writes to cache first then storage. Write-back is never acceptable.",
+      "They are identical — both write to cache and storage simultaneously",
+      "Write-through writes to cache AND storage synchronously (consistent, slower writes). Write-back writes to cache only, flushes to storage asynchronously (faster writes, data loss risk on cache failure). Accept write-back for high-write workloads where eventual persistence is acceptable",
+      "Write-through is for read-heavy systems; write-back is for write-heavy systems with no durability requirement"
+    ],
+    answer: 2,
+    explanation: "Write-through: both writes happen before ACK to the client — consistent but adds write latency. Write-back: cache ACKs immediately, flushes to storage later — faster writes but if the cache node fails before flushing, data is lost. Use write-back for session data, analytics counters, or any data where a brief loss is tolerable. Never for financial transactions."
+  },
+  {
+    section: "Section 22: System Design",
+    question: "What is the thundering herd problem in caching, and what is the most operationally practical mitigation?",
+    options: [
+      "Too many cache nodes overwhelming the load balancer — solved by reducing the number of cache nodes",
+      "A popular cache key expires, and thousands of simultaneous cache misses all hit the database before any response can repopulate the cache — mitigated by probabilistic early expiration, a mutex on cache miss, or background refresh",
+      "Cache invalidation messages flood the network — solved by batching invalidations",
+      "A large cache dataset causes garbage collection pauses — solved by increasing heap size"
+    ],
+    answer: 1,
+    explanation: "Thundering herd: high-traffic cache miss storm on expiry. Mitigations: (1) Probabilistic early expiration — re-cache slightly before TTL with some probability, spreading the load. (2) Mutex/distributed lock on miss — only one request fetches, others wait. (3) Background refresh — a worker proactively refreshes hot keys before expiry. (4) Jittered TTLs — stagger expiry times so not all keys expire simultaneously."
+  },
+  {
+    section: "Section 22: System Design",
+    question: "Your read-heavy application's database is overwhelmed. You've already added read replicas. What is the next lever to pull before considering sharding?",
+    options: [
+      "Add more write replicas to distribute the write load",
+      "Shard the database immediately — replicas can't scale reads beyond a point",
+      "Add a caching layer (Redis/Memcached) in front of the read replicas — offload hot reads entirely from the database. Most read-heavy systems can serve 90%+ of reads from cache",
+      "Switch to a NoSQL database — SQL doesn't scale reads"
+    ],
+    answer: 2,
+    explanation: "Decision tree: index/query-optimize → vertical scale → read replicas → caching layer → sharding. A cache layer in front of DB replicas can serve 90%+ of read traffic for most workloads. Sharding is last because it adds significant operational complexity: cross-shard queries, rebalancing, application-level routing. Always exhaust simpler options first."
+  },
+  {
+    section: "Section 22: System Design",
+    question: "What is the difference between at-least-once and exactly-once message delivery, and how can you get effectively-exactly-once behavior without the overhead of true exactly-once?",
+    options: [
+      "They are equivalent — modern message queues guarantee exactly-once automatically",
+      "At-least-once: messages may be delivered multiple times (duplicates possible). Exactly-once: guaranteed no duplicates but requires distributed transactions. Make consumers idempotent — then at-least-once delivery has the same business outcome as exactly-once, without the overhead",
+      "At-least-once is for streaming; exactly-once is for batch processing",
+      "At-least-once sacrifices ordering guarantees; exactly-once preserves them"
+    ],
+    answer: 1,
+    explanation: "Exactly-once delivery is expensive (requires transactional producers, dedup storage, two-phase commit). The practical alternative: design consumers to be idempotent (processing the same message twice has no additional effect — use a dedup ID). Then at-least-once delivery is safe. Payment processors: dedup on transaction ID. Database writes: upsert on unique key. Idempotency is the key insight."
+  },
+  {
+    section: "Section 22: System Design",
+    question: "What is the difference between a blue/green deployment and a canary deployment, and when should you choose each?",
+    options: [
+      "They are the same thing — blue/green is just the AWS term for canary",
+      "Blue/green: instant all-traffic switch between two full environments (instant rollback, needs 2× infra). Canary: gradually shift a percentage of traffic to the new version (blast-radius control, slower full rollout). Use canary for risky changes; blue/green when rollback speed is critical",
+      "Blue/green is for stateful services; canary is for stateless services",
+      "Canary deploys to one region first; blue/green deploys globally in parallel"
+    ],
+    answer: 1,
+    explanation: "Blue/green: flip 100% of traffic at once (DNS or LB change). Rollback = flip back. Needs double the infra. Great for: zero-downtime, fast rollback, schema migrations with backward-compatible code. Canary: route 1% → 5% → 25% → 100%. Watch SLOs at each step. Great for: code changes with unknown production behavior. Automate promotion/rollback based on error budget burn rate for maximum safety."
+  },
+  {
+    section: "Section 22: System Design",
+    question: "What is RTO vs RPO, and what DR strategy would you choose for a payment service requiring RTO < 5 minutes and RPO < 30 seconds?",
+    options: [
+      "RTO = data loss tolerance; RPO = downtime tolerance. Backup-and-restore meets these requirements.",
+      "RTO = how long you can be down; RPO = how much data you can lose. For RTO < 5 min and RPO < 30 sec, you need at minimum a warm standby (scaled-down replica in another region with near-real-time replication), or active-active multi-region",
+      "RTO and RPO are both measured in data volume, not time",
+      "RTO < 5 min and RPO < 30 sec can be met with daily backups if your restore process is automated"
+    ],
+    answer: 1,
+    explanation: "RTO = Recovery Time Objective (downtime tolerance). RPO = Recovery Point Objective (data loss tolerance). Backup-and-restore: RTO hours, RPO hours — doesn't meet the requirement. Pilot light: RTO ~1hr — doesn't meet it. Warm standby (scaled-down replica, continuous replication): RTO minutes, RPO seconds — meets it. Active-active: near-zero RTO/RPO — exceeds it but costs most. Always verify with a drill — untested DR is a plan, not a capability."
+  },
+  {
+    section: "Section 22: System Design",
+    question: "During a network partition, the CAP theorem forces a choice. You're designing an inventory system where overselling is catastrophic. Which do you choose and why?",
+    options: [
+      "Availability — users must always be able to add to cart, even if inventory counts are stale",
+      "Consistency — during a partition, reject writes rather than risk two nodes both decrementing the same inventory item to below zero. Accept brief unavailability over a data integrity violation",
+      "Partition tolerance — you can configure it to avoid partitions entirely with the right network setup",
+      "Both — CAP theorem is theoretical and doesn't apply to modern cloud databases"
+    ],
+    answer: 1,
+    explanation: "Inventory systems are CP (Consistency + Partition tolerance). During a partition, an AP system might allow both nodes to sell the last item — overselling. The business cost of overselling (refunds, customer loss, legal issues) exceeds the cost of brief unavailability. Choose CP: reject writes during partition, return an error, users retry. The CAP trade-off is always about the business cost of each failure mode."
+  },
+  {
+    section: "Section 22: System Design",
+    question: "You're designing a rate limiter for a public API with 10,000 clients. Why is a centralized Redis counter problematic at scale, and what is the practical alternative?",
+    options: [
+      "Redis can't store more than 10,000 keys — use a relational database instead",
+      "A centralized Redis counter adds a network round-trip to every request (latency) and becomes a single point of failure. Practical alternative: local counter per gateway instance with periodic sync to Redis — allows temporary over-admission (~10-15%) but eliminates the latency and SPOF",
+      "Redis doesn't support atomic increments needed for rate limiting",
+      "Centralized Redis is always the correct approach — the latency is negligible"
+    ],
+    answer: 1,
+    explanation: "Centralized rate limiting: consistent accuracy but adds ~1ms per request (Redis round-trip) and Redis is now a SPOF + bottleneck. Local + async sync: each gateway node tracks its own count, syncs to Redis every ~100ms. Allows brief over-admission between sync windows — usually acceptable for API rate limiting. For stricter limits (payments), accept the Redis latency and add Redis Cluster for HA."
+  },
+  {
+    section: "Section 22: System Design",
+    question: "You're designing observability for a microservices platform. A senior engineer says 'just log everything and query the logs.' What is the key argument for adding metrics?",
+    options: [
+      "Logs are too expensive to store — metrics are cheaper",
+      "Logs can't record errors, only info-level events",
+      "Logs answer 'what happened on this specific request' but require scanning to answer 'what is the current error rate.' Metrics pre-aggregate data (counts, histograms) — queries are instant regardless of traffic volume. Logs for debugging specifics; metrics for continuous SLO monitoring and alerting at scale",
+      "Metrics are required by compliance; logs are optional"
+    ],
+    answer: 2,
+    explanation: "Metrics vs logs: metrics are pre-aggregated time-series (p99 latency, error rate per second) — querying 'what is the error rate right now' is O(1). Logs are individual events — answering the same question requires scanning potentially millions of log lines, adding query latency and cost. Use: metrics for alerting and dashboards (continuous health), logs for root-cause analysis of specific incidents, traces for distributed request flows."
   }
 
 ]; // end ALL_QUESTIONS
