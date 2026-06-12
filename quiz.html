@@ -269,22 +269,39 @@
       margin-bottom: 24px;
     }
 
-    .sections-list {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 6px;
-      justify-content: center;
-      margin-bottom: 28px;
+    .topic-filter { margin-bottom: 22px; text-align: left; }
+    .filter-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+    .filter-title { font-size: 0.8rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; font-weight: 600; }
+    .filter-actions { display: flex; gap: 8px; }
+    .filter-btn {
+      font-size: 0.72rem; padding: 3px 12px;
+      background: var(--bg); border: 1px solid var(--border); border-radius: 4px;
+      color: var(--muted); cursor: pointer; transition: border-color 0.15s, color 0.15s;
+      font-family: inherit;
     }
-
-    .sections-list span {
-      font-size: 0.72rem;
-      background: var(--bg);
-      border: 1px solid var(--border);
-      border-radius: 4px;
-      padding: 3px 8px;
-      color: var(--muted);
+    .filter-btn:hover { border-color: var(--accent); color: var(--accent); }
+    .topic-grid {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px;
     }
+    @media (max-width: 540px) { .topic-grid { grid-template-columns: 1fr; } }
+    .topic-group {
+      background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px;
+    }
+    .group-header-label {
+      display: flex; align-items: center; gap: 8px;
+      font-size: 0.82rem; font-weight: 700; color: var(--text);
+      cursor: pointer; margin-bottom: 8px; user-select: none;
+    }
+    .group-header-label input[type=checkbox] { accent-color: var(--accent); width: 14px; height: 14px; cursor: pointer; flex-shrink: 0; }
+    .section-item {
+      display: flex; align-items: center; gap: 7px;
+      font-size: 0.75rem; color: var(--muted); cursor: pointer; padding: 2px 0; user-select: none;
+    }
+    .section-item:hover { color: var(--text); }
+    .section-item input[type=checkbox] { accent-color: var(--accent); width: 13px; height: 13px; cursor: pointer; flex-shrink: 0; }
+    .section-item .q-ct { margin-left: auto; font-size: 0.68rem; color: #444d56; }
+    .avail-bar { text-align: center; margin-top: 6px; }
+    .avail-count { font-size: 0.82rem; color: var(--accent); font-weight: 600; }
 
     /* Question count selector */
     .count-label {
@@ -352,13 +369,21 @@
 
 <div id="start-screen">
   <div class="start-card">
-    <h2>Ready to quiz yourself?</h2>
-    <p>
-      Questions are drawn from all 18 sections of the Linux SRE cheatsheet,<br>
-      covering Linux fundamentals, Terraform, AWS, and Kubernetes.<br>
-      Each round shuffles a fresh random selection.
-    </p>
-    <div class="sections-list" id="sections-list"></div>
+    <h2>SRE Quiz</h2>
+
+    <div class="topic-filter">
+      <div class="filter-header">
+        <span class="filter-title">Choose Topics</span>
+        <div class="filter-actions">
+          <button class="filter-btn" onclick="selectAllTopics()">All</button>
+          <button class="filter-btn" onclick="clearAllTopics()">None</button>
+        </div>
+      </div>
+      <div class="topic-grid" id="topic-grid"></div>
+      <div class="avail-bar">
+        <span class="avail-count" id="avail-count"></span>
+      </div>
+    </div>
 
     <div class="count-label">How many questions?</div>
     <div class="count-options">
@@ -2657,7 +2682,8 @@ function selectCount(btn) {
 }
 
 function startQuiz() {
-  const pool = shuffle(ALL_QUESTIONS);
+  const pool = shuffle(ALL_QUESTIONS.filter(q => selectedSections.has(q.section)));
+  if (pool.length === 0) return;
   questions = pool.slice(0, Math.min(selectedCount, pool.length));
   current = 0;
   score = 0;
@@ -2778,20 +2804,116 @@ function restartQuiz() {
   document.getElementById('start-screen').style.display = 'block';
 }
 
-// Populate sections list on start screen
-const sectionNames = [...new Set(ALL_QUESTIONS.map(q => q.section))];
-const sl = document.getElementById('sections-list');
-sectionNames.forEach(s => {
-  const sp = document.createElement('span');
-  sp.textContent = s;
-  sl.appendChild(sp);
-});
+// Topic groups for section filtering
+const TOPIC_GROUPS = [
+  { id: 'linux', label: 'Linux Fundamentals',
+    topics: ['Section 1: The Magic Numbers','Section 2: The Memory Story','Section 3: Process Lifecycle','Section 4: Signals','Section 5: D-State / Load Average','Section 6: Files, FDs, Inodes','Section 7: DNS Resolution Path'] },
+  { id: 'aws', label: 'Terraform & AWS',
+    topics: ['Section 10: Terraform','Section 11: IAM','Section 12: EC2','Section 13: ECS','Section 14: RDS','Section 15: The SRE Layer','AWS: Networking & VPC','AWS: Lambda & Serverless','AWS: S3 & Storage','AWS: Auto Scaling & High Availability','AWS: KMS & Security','AWS: CloudFormation'] },
+  { id: 'k8s', label: 'Containers & Kubernetes',
+    topics: ['Section 16: Containers Under the Hood','Section 17: Kubernetes Core','Section 18: K8s Debugging Playbook'] },
+  { id: 'identity', label: 'Identity & Security',
+    topics: ['Section 19: OAuth 2.0 & OIDC','Section 19: SAML & SSO (Okta / OneLogin)','Section 19: LDAP','Section 20: PKI & TLS Certificates'] },
+  { id: 'precision', label: 'Precision Drills §21',
+    topics: ['§21 Precision: Load Average','§21 Precision: Orphan vs Zombie','§21 Precision: 4096 & Memory','§21 Precision: D-State Exit Paths','§21 Precision: pid_max & Process Limits'] },
+  { id: 'sysdesign', label: 'System Design',
+    topics: ['Section 22: System Design'] },
+];
 
-// Show total question count
-document.querySelector('.start-card p').innerHTML =
-  `Questions drawn from all sections of the Linux SRE cheatsheet,<br>
-   covering Linux fundamentals, Terraform, AWS, and Kubernetes.<br>
-   <strong style="color:var(--accent)">${ALL_QUESTIONS.length} questions</strong> in the bank — each round shuffles a fresh random selection.`;
+let selectedSections = new Set(TOPIC_GROUPS.flatMap(g => g.topics));
+
+function displayName(s) {
+  return s.replace(/^Section \d+:\s*/, '').replace(/^§\d+ Precision:\s*/, '');
+}
+
+function qCount(section) {
+  return ALL_QUESTIONS.filter(q => q.section === section).length;
+}
+
+function buildTopicFilter() {
+  const grid = document.getElementById('topic-grid');
+  TOPIC_GROUPS.forEach(group => {
+    const groupDiv = document.createElement('div');
+    groupDiv.className = 'topic-group';
+
+    const headerLabel = document.createElement('label');
+    headerLabel.className = 'group-header-label';
+    const groupCheck = document.createElement('input');
+    groupCheck.type = 'checkbox';
+    groupCheck.checked = true;
+    groupCheck.dataset.groupId = group.id;
+    groupCheck.addEventListener('change', () => toggleGroup(group.id, groupCheck.checked));
+    headerLabel.appendChild(groupCheck);
+    headerLabel.appendChild(document.createTextNode(' ' + group.label));
+    groupDiv.appendChild(headerLabel);
+
+    group.topics.forEach(topic => {
+      const label = document.createElement('label');
+      label.className = 'section-item';
+      const cb = document.createElement('input');
+      cb.type = 'checkbox';
+      cb.checked = true;
+      cb.dataset.section = topic;
+      cb.dataset.groupId = group.id;
+      cb.addEventListener('change', () => {
+        if (cb.checked) selectedSections.add(topic); else selectedSections.delete(topic);
+        syncGroupCheckbox(group.id);
+        updateAvailableCount();
+      });
+      const nameSpan = document.createElement('span');
+      nameSpan.textContent = displayName(topic);
+      const ctSpan = document.createElement('span');
+      ctSpan.className = 'q-ct';
+      ctSpan.textContent = qCount(topic) + 'q';
+      label.appendChild(cb);
+      label.appendChild(nameSpan);
+      label.appendChild(ctSpan);
+      groupDiv.appendChild(label);
+    });
+
+    grid.appendChild(groupDiv);
+  });
+  updateAvailableCount();
+}
+
+function toggleGroup(groupId, checked) {
+  const group = TOPIC_GROUPS.find(g => g.id === groupId);
+  group.topics.forEach(topic => { if (checked) selectedSections.add(topic); else selectedSections.delete(topic); });
+  document.querySelectorAll(`input[data-group-id="${groupId}"][data-section]`).forEach(cb => cb.checked = checked);
+  updateAvailableCount();
+}
+
+function syncGroupCheckbox(groupId) {
+  const group = TOPIC_GROUPS.find(g => g.id === groupId);
+  const allChecked = group.topics.every(t => selectedSections.has(t));
+  const groupCb = document.querySelector(`input[data-group-id="${groupId}"]:not([data-section])`);
+  if (groupCb) groupCb.checked = allChecked;
+}
+
+function selectAllTopics() {
+  TOPIC_GROUPS.forEach(g => g.topics.forEach(t => selectedSections.add(t)));
+  document.querySelectorAll('#topic-grid input[type=checkbox]').forEach(cb => cb.checked = true);
+  updateAvailableCount();
+}
+
+function clearAllTopics() {
+  selectedSections.clear();
+  document.querySelectorAll('#topic-grid input[type=checkbox]').forEach(cb => cb.checked = false);
+  updateAvailableCount();
+}
+
+function updateAvailableCount() {
+  const avail = ALL_QUESTIONS.filter(q => selectedSections.has(q.section)).length;
+  const el = document.getElementById('avail-count');
+  el.textContent = avail === 0 ? 'No topics selected' : `${avail} question${avail === 1 ? '' : 's'} available`;
+  el.style.color = avail === 0 ? 'var(--wrong)' : 'var(--accent)';
+  const startBtn = document.getElementById('start-btn');
+  startBtn.disabled = avail === 0;
+  startBtn.style.opacity = avail === 0 ? '0.4' : '1';
+  startBtn.style.cursor = avail === 0 ? 'not-allowed' : 'pointer';
+}
+
+buildTopicFilter();
 </script>
 </body>
 </html>
