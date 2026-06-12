@@ -190,7 +190,7 @@ Confirm: `ps -eLf | wc -l`, `ulimit -u`, `pids.current` in the cgroup, `ps aux |
 
 # Part 3 — Containers & Kubernetes
 
-## 16. Containers Under the Hood (the "what IS a container" faker question)
+## 16. Containers Under the Hood
 
 **The answer:** a container is **not a VM** — it's just a Linux process (tree) wrapped in three kernel features:
 1. **Namespaces** = what the process can *see* (pid, net, mnt, uts, ipc, user — its own PID 1, its own network stack, its own filesystem view)
@@ -201,45 +201,109 @@ Say it like: *"A container is a process with namespaces for isolation, cgroups f
 
 **Direct Part 1 tie-ins (interviewers chain these deliberately):**
 - Container memory limit = cgroup limit → exceed it → **OOMKilled, exit 137** — host free RAM irrelevant.
-- **Your app is PID 1 inside the container** → it inherits init's reaping duty → apps that fork but don't reap fill the container with zombies. Fix: `docker run --init` / ECS `initProcessEnabled` (injects **tini**, a tiny init that just reaps).
-- Stop sequence: SIGTERM → grace period → SIGKILL. PID 1 also has weird signal defaults (no default SIGTERM handler!) — another reason tini exists.
-- Image vs container: image = read-only template/layers; container = running process + writable layer.
+- **Your app is PID 1** → it inherits init's reaping duty → apps that fork but don't reap fill the container with zombies. Fix: `docker run --init` / ECS `initProcessEnabled` (injects **tini**).
+- Stop sequence: SIGTERM → grace period → SIGKILL. PID 1 has no default SIGTERM handler — another reason tini exists.
+- Image vs container: image = read-only layers; container = running process + ephemeral writable layer. **Writable layer is destroyed on `docker rm`** — never store persistent data there.
+
+**Multi-stage builds (mid-senior signal):**
+- Single-stage: build tools (gcc, npm, go toolchain) end up in the production image → bloated (~1GB), large attack surface.
+- Multi-stage: compile in a `FROM golang:1.22 AS builder` stage, copy only the binary into `FROM scratch` or `FROM alpine`. Result: ~10MB final image, no compiler, no shell.
+- Layer caching: Docker cache is ordered and content-addressed — a cache miss invalidates all subsequent layers. **Order instructions least-changed → most-changed**: copy dependency manifests first, install deps (cached), then copy source (busts cache only when code changes).
+
+**Container security — the questions that expose gaps:**
+- `securityContext.privileged: true` ≈ root on the host. Grants nearly all Linux capabilities, access to all host devices, ability to mount filesystems and load kernel modules. A compromised privileged container = compromised node.
+- Principle of least privilege: add only specific capabilities needed (e.g., `NET_ADMIN`). Use `securityContext.runAsNonRoot: true` + `USER 1000` in the Dockerfile.
+- **Pod Security Admission (PSA)** (replaced PodSecurityPolicy in 1.25): `restricted` profile enforces non-root, no privilege escalation, read-only root filesystem at the namespace level.
+
+**Pod network model:**
+- All containers in a pod share **one network namespace** (same IP, same `lo`). They talk to each other on `localhost:<port>`. The **pause/infra container** holds the namespace open — app containers attach to it.
+- Port conflicts between same-pod containers are real. Containers in different pods must use Services.
 
 ## 17. Kubernetes Core
 
 **Architecture in one breath:** Control plane = **API server** (front door, everything goes through it), **etcd** (the database — lose it, lose the cluster), **scheduler** (picks nodes), **controller-manager** (reconciliation loops). Each node runs **kubelet** (starts/monitors pods), a container runtime (containerd), and **kube-proxy** (programs Service routing via iptables/IPVS).
 
-**The mental model that marks a senior:** Kubernetes is a **reconciliation engine** — you declare desired state in etcd, controllers loop forever making reality match. (Same philosophy as Terraform, but continuous.)
+**The mental model that marks a senior:** Kubernetes is a **reconciliation engine** — you declare desired state in etcd, controllers loop forever making reality match.
 
-- **Pod** = smallest unit; one or more containers sharing a network namespace (localhost to each other) and volumes. Pods are cattle — they get replaced, not fixed.
-- **Deployment → ReplicaSet → Pods**: Deployment manages rollouts; each new version = new ReplicaSet. `kubectl rollout undo` = instant rollback. Tune with maxSurge/maxUnavailable.
-- **Service** = stable virtual IP + DNS over an ever-changing pod set, selected by labels. Types: ClusterIP (internal), NodePort, LoadBalancer (cloud LB). **Ingress** for L7 routing. DNS: `svc-name.namespace.svc.cluster.local` via CoreDNS.
-- **Probes — know the difference cold (classic filter question):**
-  - **Liveness** fails → kubelet RESTARTS the container. 
-  - **Readiness** fails → pod is REMOVED from Service endpoints (no restart).
-  - **Startup** → holds off the other probes for slow-booting apps.
-  - The classic self-inflicted outage: aggressive liveness probe + slow dependency = cluster-wide restart storm of healthy-but-slow pods. Liveness should check "am I deadlocked," never "is my database up."
-- **Requests vs limits (the other guaranteed question):**
-  - **Requests** = what the scheduler reserves (placement math).
-  - **Limits** = what the cgroup enforces: CPU over limit → **throttled** (slow); memory over limit → **OOMKilled** (137, dead). 
-  - QoS classes: Guaranteed (req=limit) > Burstable > BestEffort — eviction order under node memory pressure, worst class first.
-- **HPA** scales replicas on metrics; **PDB** (PodDisruptionBudget) limits voluntary disruptions during node drains.
-- **RBAC** in one line: Role/ClusterRole = verbs on resources; RoleBinding attaches them to users/ServiceAccounts.
-- **EKS specifics** (likely their flavor): managed control plane, node groups or Fargate profiles, and **IRSA** — IAM Roles for Service Accounts = the K8s analog of ECS task roles: per-pod AWS permissions, no node-wide creds. (Ties to §11.)
+**Workload controllers:**
+- **Deployment → ReplicaSet → Pods**: manages rollouts. `kubectl rollout undo` reactivates the previous RS. Tune with `maxSurge`/`maxUnavailable`. Rolling update stalls if new pods never become Ready — old pods are preserved (safe but stuck).
+- **StatefulSet**: use when pods need *stable identity*. Guarantees: (1) stable hostnames `pod-0`, `pod-1` via headless Service (`clusterIP: None`), (2) dedicated PVC per pod via `volumeClaimTemplates` (survives rescheduling), (3) ordered start/stop. Use for: Kafka, Cassandra, Redis Cluster, Postgres with streaming replicas.
+- **DaemonSet**: one pod per node (or per matching node). Use for node agents: log shippers, monitoring exporters, CNI plugins.
+- **Job / CronJob**: run-to-completion workloads.
 
-## 18. K8s Debugging Playbook (scenario-question ammo)
+**Services & networking:**
+- **Service types:** ClusterIP (internal virtual IP, default), NodePort (exposes on every node's IP:port), LoadBalancer (provisions cloud LB), ExternalName (CNAME alias).
+- DNS: `svc.namespace.svc.cluster.local` via CoreDNS. `ndots:5` causes up to 5 DNS queries per lookup on short names — reduce to `ndots:2` for services that resolve many external names.
+- **Ingress**: L7 routing (host/path-based) in front of Services. Needs an Ingress Controller (nginx, AWS ALB, Traefik).
+- **NetworkPolicy**: selects pods and specifies allowed ingress/egress. Default = allow all. Once a NetworkPolicy selects a pod → deny all non-matching traffic. Enforced by the CNI (Calico, Cilium); Flannel ignores it. Default-deny pattern: apply a catch-all empty-spec NetworkPolicy to every namespace, then add specific allow rules.
 
-**Universal first moves:** `kubectl describe pod X` (read Events — the answer is usually printed there), `kubectl logs X --previous` (the crashed container's logs, not the new one's), `kubectl get events --sort-by=.lastTimestamp`.
+**Probes — know the difference cold:**
+- **Liveness** fails → kubelet **RESTARTS** the container. Only check "am I deadlocked?" Never check "is my DB up?" — that cascades into cluster-wide restart storms.
+- **Readiness** fails → pod **REMOVED from Service endpoints** (no restart). Check "am I ready to serve traffic?"
+- **Startup** → holds off liveness/readiness for slow-booting apps.
 
-| Symptom | Usual story | Where to look |
+**Requests vs limits:**
+- **Requests** = scheduler reservation (placement math). **Limits** = cgroup enforcement.
+- CPU over limit → **throttled** (silent, just slower). Memory over limit → **OOMKilled** (exit 137).
+- **QoS classes** (auto-assigned): **Guaranteed** (requests == limits, both set) → **Burstable** (requests < limits) → **BestEffort** (nothing set). Eviction order under node memory pressure: BestEffort first, Burstable next, Guaranteed last.
+- JVM trap: JVM reads `/proc/meminfo` (host RAM) and sizes heap from that → heap exceeds cgroup limit → immediate OOMKill. Fix: `-XX:MaxRAMPercentage` with `UseContainerSupport` (JDK 8u191+).
+
+**Storage:**
+- **PersistentVolume (PV)**: a cluster-level storage resource (admin-created or dynamically provisioned).
+- **PersistentVolumeClaim (PVC)**: a pod's request for storage (developer-created). Bound to a PV.
+- **StorageClass**: provisioner policy. Dev creates PVC → SC's provisioner auto-creates PV (e.g., EBS `gp3`). Reclaim policies: `Delete` (PV deleted with PVC, default for dynamic), `Retain` (PV kept for manual recovery).
+- Access modes: `ReadWriteOnce` (single node, EBS), `ReadWriteMany` (multiple nodes simultaneously, EFS/NFS).
+- **emptyDir**: ephemeral volume shared by containers in the same pod — lives and dies with the pod.
+
+**Scheduling controls:**
+- **Taints & tolerations**: node taint repels pods; pod toleration overrides a specific taint. Effects: `NoSchedule` (won't schedule new pods), `PreferNoSchedule` (soft), `NoExecute` (evicts existing pods without toleration). Use to dedicate nodes (GPU, high-memory) or quarantine sick nodes.
+- **Node/pod affinity**: `requiredDuringScheduling...` = hard constraint (pod stays Pending if unmet). `preferredDuringScheduling...` = soft. **Pod anti-affinity** with `topologyKey: topology.kubernetes.io/zone` = spread replicas across AZs for HA.
+- **LimitRange**: sets namespace-level default requests/limits so pods can't omit them (prevents BestEffort QoS).
+- **ResourceQuota**: caps total resource consumption per namespace.
+
+**Autoscaling:**
+- **HPA** (Horizontal Pod Autoscaler): scales replica count on metrics. Default: CPU utilization (requires `metrics-server`). Custom/external metrics (RPS, queue depth): Prometheus Adapter or KEDA. Cooldown: `scaleDown.stabilizationWindowSeconds` (default 5min) prevents thrashing. Never manually set replicas on an HPA-managed Deployment.
+- **Cluster Autoscaler (CA)**: adds/removes nodes when pods are unschedulable or nodes are underutilized. Works with HPA: HPA creates pods → CA adds nodes to fit them.
+- **PDB** (PodDisruptionBudget): limits voluntary disruptions. `minAvailable: 2` → `kubectl drain` blocks if eviction would drop below 2. Doesn't protect against node crashes. Never set `minAvailable == replicas` — blocks all drains.
+
+**Multi-container patterns:**
+- **Sidecar**: augments the main container without changing it. Examples: log shipper, service mesh proxy (Envoy), secret refresher.
+- **Init container**: runs to completion *before* app containers start. Use for: wait-for-DB-ready, run migrations, populate shared volumes with config/certs.
+- **Ambassador**: proxies outbound traffic (e.g., Envoy for circuit-breaking, retries, mTLS).
+
+**RBAC:**
+- `Role` = namespace-scoped; `ClusterRole` = cluster-scoped. Use ClusterRole for: cluster-scoped resources (nodes, PVs), cross-namespace permissions, or non-namespaced API groups.
+- `RoleBinding` attaches to a namespace; `ClusterRoleBinding` attaches cluster-wide. Prefer RoleBinding over ClusterRoleBinding — least privilege.
+- Audit: `kubectl get clusterrolebindings | grep default` often reveals over-permissioned service accounts.
+
+**Helm:**
+- Chart = templated K8s manifests + `values.yaml`. Release = a named instance of a chart deployed to a cluster.
+- `helm upgrade --install` = upsert (create if not exists, upgrade otherwise) — idempotent, safe for CI/CD.
+- Failed upgrade: release state = `failed`, previous revision still active. Roll back: `helm rollback <release> <rev>`. Use `--atomic` flag in pipelines (auto-rollback on failure).
+
+**EKS specifics:**
+- Managed control plane (AWS handles etcd, API server HA). Node groups (EC2) or Fargate profiles.
+- **IRSA** (IAM Roles for Service Accounts): annotate a K8s SA with an IAM role ARN → pods get scoped temporary AWS creds via projected tokens. Never use node-level IAM roles for workload permissions.
+
+## 18. K8s Debugging Playbook
+
+**Universal first moves:** `kubectl describe pod X` (Events section has the answer 80% of the time), `kubectl logs X --previous` (crashed container's logs, not the new instance), `kubectl get events --sort-by=.lastTimestamp -A`.
+
+| Symptom | Root cause | First commands |
 |---|---|---|
-| **CrashLoopBackOff** | App starts and dies; backoff doubles between restarts | `logs --previous`; exit code in describe: 1 = app error, **137 = OOM or kill**, 143 = SIGTERM |
-| **OOMKilled** | Memory limit too low or app leak | describe shows OOMKilled + 137; bump limit or fix app; `kubectl top pod` for usage |
-| **ImagePullBackOff** | Bad tag, missing registry auth (imagePullSecrets/IRSA), or no NAT path to registry | describe Events spells it out |
-| **Pending forever** | Scheduler can't place it: insufficient requests-capacity, taints w/o tolerations, affinity rules, or unbound PVC | describe Events: "0/N nodes available: ..." tells you exactly why |
-| **Readiness failing / no traffic** | Wrong port, app slow to warm, dependency check in readiness probe | describe + endpoint list: `kubectl get endpoints svc-name` |
-| **Node NotReady** | kubelet down, disk/memory pressure, network partition | `kubectl describe node`: Conditions + taints; then SSH and it's Part 1 territory (D-states, OOM, full disk) |
-| **Evictions** | Node memory/disk pressure → BestEffort/Burstable pods killed | `kubectl get events`; fix requests/limits honesty |
+| **CrashLoopBackOff** | App exits immediately; backoff doubles | `logs --previous`; check exit code: 1=app, **137=OOM/kill**, 143=SIGTERM |
+| **OOMKilled** | Memory limit too low, or JVM read host RAM, or leak | `describe pod` → reason: OOMKilled; `kubectl top pod`; set `-XX:MaxRAMPercentage` for JVM |
+| **ImagePullBackOff** | Bad tag / missing imagePullSecret / ECR IAM missing | `describe pod` Events; verify ECR node IAM role; check imagePullSecrets |
+| **Pending** | Scheduler can't place: capacity, taints, affinity, unbound PVC | `describe pod` → "0/N nodes available: …" tells exact reason |
+| **Readiness failing** | Wrong port, slow warmup, dependency check in probe | `describe pod` + `kubectl get endpoints <svc>` |
+| **Node NotReady** | kubelet down, disk/memory/pid pressure, network partition | `describe node` Conditions; SSH → Part 1 territory: D-states, OOM, full disk |
+| **Evictions** | Node memory/disk pressure; BestEffort/Burstable evicted first | `kubectl get events`; add honest requests/limits; LimitRange enforcement |
+| **Stuck Terminating** | preStop hook hung, SIGTERM ignored, node offline | `--force --grace-period=0` removes from etcd; surviving container processes orphaned if node returns |
+| **Drain hangs** | PDB violation blocking eviction, or unowned (orphan) pods | `kubectl describe pdb`; add `--delete-emptydir-data --ignore-daemonsets` flags |
+| **Rolling update stalled** | New pods Running but Readiness failing — old pods preserved | `describe pod <new>` for probe failures; check config, ports, dependencies |
+| **DNS resolution fails** | CoreDNS down, wrong search domain, ndots misconfiguration | `exec` into pod → `cat /etc/resolv.conf`; `nslookup kubernetes.default`; `kubectl get pods -n kube-system -l k8s-app=kube-dns` |
+
+**DNS gotcha:** `ndots:5` means a lookup of `redis` triggers queries for `redis.namespace.svc.cluster.local`, `redis.svc.cluster.local`, `redis.cluster.local`, `redis.search.domain`, and finally `redis.` — 5 round trips before resolving. Set `dnsConfig.options: [{name: ndots, value: "2"}]` for services that do heavy external DNS lookups.
 
 **The closing line for any K8s debugging answer:** "...and if the node itself is sick, I'm back to Linux fundamentals — kubelet logs, dmesg, D-states, disk pressure. Kubernetes is a scheduler on top of everything in Part 1."
 

@@ -1337,6 +1337,312 @@ const ALL_QUESTIONS = [
     explanation: "Empty endpoints = no pods match the selector (wrong labels), OR pods exist but Readiness is failing (readiness failure silently removes pods from endpoints). Check: kubectl get pods -l <selector> and kubectl describe pod for readiness probe status."
   },
 
+  // ── Section 16: Containers (additional) ──────────────────────────────────
+  {
+    section: "Section 16: Containers Under the Hood",
+    question: "What problem does a multi-stage Docker build solve, and what is the concrete result on image size?",
+    options: [
+      "Multi-stage builds allow parallel layer building to speed up CI pipelines",
+      "A single-stage build includes build tools (gcc, npm, go toolchain) in the final image. Multi-stage: compile in a build stage, copy only the binary/artifact into a minimal final stage (e.g., scratch or alpine). Final image has no compiler, no build deps — typically 10-100× smaller and a smaller attack surface",
+      "Multi-stage builds enable running containers as multiple OS processes simultaneously",
+      "Multi-stage builds are only useful for compiled languages — interpreted languages (Python, Node) don't benefit"
+    ],
+    answer: 1,
+    explanation: "Single-stage: 1GB Go image (go toolchain + deps + binary). Multi-stage: copy the compiled binary into 'FROM scratch' — final image is ~10MB. Benefits: smaller attack surface (no shell, no package manager), faster pulls, less CVE exposure. Node/Python benefit too: build stage installs dev deps and runs tests; final stage copies only node_modules/dist with --production flag."
+  },
+  {
+    section: "Section 16: Containers Under the Hood",
+    question: "You rebuild a Docker image after changing one line in your application code. Why does Docker rebuild layers after the changed line even if nothing else changed?",
+    options: [
+      "Docker always rebuilds all layers from scratch — there is no layer caching",
+      "Docker layer cache is content-addressed and ordered: each instruction creates a layer, and the cache is invalidated from the first changed layer downward. A code COPY before installing dependencies invalidates the dependency install on every code change",
+      "Docker only caches the final layer, not intermediate layers",
+      "Layer caching only applies to base image (FROM) layers — all other layers are always rebuilt"
+    ],
+    answer: 1,
+    explanation: "Layer cache invalidation cascades: if you COPY . . before RUN npm install, every code change busts the npm install cache. Fix: copy only package.json first, run npm install (now cached unless deps change), then copy the rest of the source. Order Dockerfile instructions from least-changed to most-changed. This is one of the most impactful CI optimization techniques."
+  },
+  {
+    section: "Section 16: Containers Under the Hood",
+    question: "A container has securityContext.privileged: true. What does this actually grant, and why is it dangerous?",
+    options: [
+      "Privileged mode gives the container its own kernel namespace but no extra capabilities",
+      "Privileged mode disables all cgroup limits, allowing the container to use unlimited CPU and memory",
+      "Privileged mode gives the container nearly all Linux capabilities and access to all host devices — effectively root on the host. The container can mount host filesystems, load kernel modules, and escape the container namespace. Never run privileged unless absolutely required (e.g., a CNI plugin or node-level agent)",
+      "Privileged mode is the same as running with runAsUser: 0 (root) inside the container"
+    ],
+    answer: 2,
+    explanation: "privileged: true ≈ full root on the host. The container gets all capabilities (CAP_SYS_ADMIN, etc.), can see /dev, mount filesystems, modify iptables, load kernel modules. A compromised privileged container is a compromised node. Principle of least privilege: add only the specific capabilities needed (e.g., NET_ADMIN for a network tool) rather than full privilege. Use OPA/Kyverno or PSA (Pod Security Admission) to block privileged pods in production namespaces."
+  },
+  {
+    section: "Section 16: Containers Under the Hood",
+    question: "What happens to data written to a container's writable layer when the container exits? How do you persist it?",
+    options: [
+      "The writable layer is automatically committed as a new image layer on exit",
+      "The writable layer is ephemeral — it is destroyed when the container is removed. Persist data by mounting a volume (Docker volume or bind mount), which lives outside the container's overlay filesystem",
+      "Data is written to the image's read-only layers and persists for the next container run",
+      "Data is automatically synced to the host filesystem in /var/lib/docker"
+    ],
+    answer: 1,
+    explanation: "Container = image layers (read-only) + writable layer (ephemeral). On container removal, the writable layer is deleted. Volumes bypass overlayfs entirely: bind mounts map a host path into the container; named volumes are managed by the container runtime. In Kubernetes, this maps to emptyDir (ephemeral, lives with the pod) vs PersistentVolumeClaim (survives pod restarts). Never store database data in a container's writable layer."
+  },
+  {
+    section: "Section 16: Containers Under the Hood",
+    question: "Two containers in the same Kubernetes pod want to communicate with each other. How, and why does this work at the kernel level?",
+    options: [
+      "They communicate via the pod's internal DNS name on port 80",
+      "They use a shared Unix socket that Kubernetes creates automatically for same-pod containers",
+      "Containers in the same pod share a network namespace — they share the same IP address and loopback interface. They communicate on localhost:<port>. This works because the pod's pause container (infra container) holds the network namespace; app containers join it on start",
+      "They communicate via a Kubernetes Service with ClusterIP pointing to 127.0.0.1"
+    ],
+    answer: 2,
+    explanation: "Pod network model: all containers in a pod share one network namespace (same IP, same localhost). The pause/infra container is started first and holds the namespace open — app containers attach to it. Implications: port conflicts between containers in the same pod are real (can't run two processes on port 8080). They also share IPC namespace by default, enabling shared memory. Containers in different pods must communicate via Services/ClusterIP."
+  },
+  {
+    section: "Section 16: Containers Under the Hood",
+    question: "Your container image runs as root (UID 0) by default. What is the correct way to fix this in a Dockerfile, and what Kubernetes admission control enforces it cluster-wide?",
+    options: [
+      "Add ENV USER=nobody to the Dockerfile — environment variables change the effective user",
+      "Use 'USER nonroot' (or a specific UID) in the Dockerfile after creating the user. In Kubernetes, set securityContext.runAsNonRoot: true on the pod/container spec. Pod Security Admission (PSA) with the 'restricted' profile enforces this cluster-wide by rejecting pods that run as root",
+      "Running as root inside a container is safe because the container namespace isolates it from the host",
+      "Set securityContext.readOnlyRootFilesystem: true — this prevents root from writing to system paths"
+    ],
+    answer: 1,
+    explanation: "Root in a container is the same UID 0 as root on the host — if the container escapes its namespace (kernel exploit, privileged mount), it has host root. Fix: Dockerfile USER instruction (e.g., USER 1000:1000). Kubernetes: securityContext.runAsNonRoot: true causes kubelet to refuse to start a root-UID container. Pod Security Admission (replaced PodSecurityPolicy in k8s 1.25): 'restricted' profile enforces non-root, no privilege escalation, read-only root filesystem."
+  },
+
+  // ── Section 17: Kubernetes Core (additional) ─────────────────────────────
+  {
+    section: "Section 17: Kubernetes Core",
+    question: "When should you use a StatefulSet instead of a Deployment, and what guarantees does a StatefulSet provide that a Deployment doesn't?",
+    options: [
+      "StatefulSets are for stateless services; Deployments are for stateful ones",
+      "Use StatefulSet when pods need: stable network identity (pod-0, pod-1 DNS names via headless Service), stable persistent storage (each pod gets its own PVC that survives rescheduling), and ordered deployment/scaling/deletion. Deployments give pods random names and shared or no stable storage",
+      "StatefulSets are only needed for databases — all other workloads should use Deployments",
+      "StatefulSets replace Deployments in Kubernetes 1.20+ — Deployments are deprecated"
+    ],
+    answer: 1,
+    explanation: "StatefulSet guarantees: (1) Stable hostnames: pod-0.svc.ns.svc.cluster.local — persists across rescheduling. (2) Stable storage: volumeClaimTemplates creates a dedicated PVC per pod (pod-0 always gets data-pod-0). (3) Ordered startup/teardown: pod-0 starts, becomes ready, then pod-1, etc. Use for: Kafka, Cassandra, Redis Cluster, Postgres with streaming replicas. A headless Service (clusterIP: None) is required to enable per-pod DNS. Never use a Deployment for anything that needs identity persistence."
+  },
+  {
+    section: "Section 17: Kubernetes Core",
+    question: "Explain the Kubernetes storage lifecycle: PersistentVolume, PersistentVolumeClaim, and StorageClass. Who creates what?",
+    options: [
+      "StorageClass is created per-pod; PV and PVC are cluster-wide and pre-provisioned by the admin",
+      "PV = an available storage resource (created by admin or dynamic provisioner). PVC = a pod's request for storage (created by developer/manifest). StorageClass = a provisioner policy that enables dynamic PV creation when a PVC is bound. With dynamic provisioning, devs only create PVCs — the SC's provisioner auto-creates the PV",
+      "PVC is created by the scheduler when a pod with volumeMounts is placed on a node",
+      "PersistentVolumes are ephemeral by default; add the 'persistent: true' annotation to make them survive pod deletion"
+    ],
+    answer: 1,
+    explanation: "Static provisioning: admin pre-creates PVs; devs create PVCs that bind to matching PVs. Dynamic provisioning (production norm): admin creates StorageClasses (gp2, gp3, io1 on EKS). Dev creates a PVC referencing a StorageClass → the provisioner auto-creates a PV (EBS volume). Reclaim policies: Delete (PV deleted with PVC — default for dynamic), Retain (PV kept after PVC deletion for manual recovery). Access modes: ReadWriteOnce (EBS, one node), ReadWriteMany (EFS, many nodes simultaneously)."
+  },
+  {
+    section: "Section 17: Kubernetes Core",
+    question: "What is the difference between a taint on a node and a toleration on a pod, and what is a practical use case for each taint effect?",
+    options: [
+      "Taints and tolerations are the same as node affinity — they control which node a pod lands on based on labels",
+      "A taint marks a node as repelling pods; a toleration allows a specific pod to ignore a taint. Effects: NoSchedule (new pods without toleration won't be scheduled), PreferNoSchedule (soft version), NoExecute (existing pods without toleration are evicted). Use: dedicate GPU nodes to ML workloads, quarantine a sick node",
+      "Taints are applied to pods to prevent them from running on certain nodes; tolerations are applied to nodes to accept those pods",
+      "NoExecute and NoSchedule are identical — the difference is only cosmetic"
+    ],
+    answer: 1,
+    explanation: "Taint a node: kubectl taint nodes gpu-node gpu=true:NoSchedule — prevents all pods without a matching toleration. Pods that need GPUs add tolerations: {key: gpu, value: true, effect: NoSchedule}. NoExecute: evicts running pods without toleration — used when marking a node for maintenance or when a node becomes unhealthy. Kubernetes adds system taints automatically: node.kubernetes.io/not-ready, node.kubernetes.io/memory-pressure. PodDisruptionBudgets don't protect against NoExecute eviction."
+  },
+  {
+    section: "Section 17: Kubernetes Core",
+    question: "What are pod anti-affinity rules and when should you use them in a production cluster?",
+    options: [
+      "Pod anti-affinity prevents a pod from running on nodes with too many other pods from different deployments",
+      "Pod anti-affinity rules tell the scheduler to avoid placing a pod on nodes where certain other pods are running. Use required anti-affinity to spread a deployment's replicas across availability zones or nodes — ensures a single AZ/node failure doesn't take down all replicas",
+      "Anti-affinity rules are the same as taints — both prevent pod placement on specific nodes",
+      "Pod anti-affinity only works between pods in different namespaces"
+    ],
+    answer: 1,
+    explanation: "Required anti-affinity (requiredDuringSchedulingIgnoredDuringExecution): hard rule — scheduler won't place the pod if the constraint can't be met. Preferred: soft. Typical HA pattern: topologyKey: topology.kubernetes.io/zone with anti-affinity on the app label — ensures replicas spread across AZs. Cluster must have zone labels on nodes (EKS does this automatically). Watch out: required anti-affinity can cause Pending pods if the cluster doesn't have enough spread capacity — prefer 'preferred' for flexibility, require only for strict HA."
+  },
+  {
+    section: "Section 17: Kubernetes Core",
+    question: "What are the three Kubernetes QoS classes, in what order are pods evicted under node memory pressure, and how is QoS class determined?",
+    options: [
+      "QoS classes are set manually with a qosClass annotation; eviction order is alphabetical by pod name",
+      "QoS classes are assigned automatically: Guaranteed (requests == limits for all containers) → Burstable (requests set but lower than limits) → BestEffort (no requests or limits set). Under memory pressure, eviction order: BestEffort first, then Burstable, last Guaranteed",
+      "QoS only controls CPU priority — memory eviction order is random",
+      "Guaranteed pods can never be evicted; only BestEffort and Burstable pods are subject to eviction"
+    ],
+    answer: 1,
+    explanation: "QoS assignment: Guaranteed = all containers have requests == limits (exact same value) for both CPU and memory. Burstable = at least one container has requests < limits. BestEffort = no resources set at all. Eviction order under node pressure: BestEffort (lowest priority, evicted first), Burstable (evicted by distance-from-request — pods using the most above their request go first), Guaranteed (evicted last, only if nothing else can be reclaimed). Production recommendation: set all requests and limits — never leave pods as BestEffort."
+  },
+  {
+    section: "Section 17: Kubernetes Core",
+    question: "You mount a ConfigMap as a volume in a pod. You update the ConfigMap. When does the pod see the change?",
+    options: [
+      "The pod sees the change immediately, within milliseconds of the ConfigMap update",
+      "Volume-mounted ConfigMaps are updated automatically within the kubelet sync period (default ~1 minute), but environment variable injections (envFrom/env valueFrom) are NOT updated — they're baked in at pod start and require a pod restart",
+      "ConfigMap volume mounts are never updated — you must restart the pod to pick up changes",
+      "The update is visible only after the Service associated with the pod is restarted"
+    ],
+    answer: 1,
+    explanation: "Volume-mounted ConfigMaps: kubelet polls for changes (configMapAndSecretChangeDetectionStrategy, default ~1min) and updates the files in the volume mount. The app must watch the file or re-read it to pick up the change. Environment variable injections (envFrom, env valueFrom configMapKeyRef): baked at container start — never updated without a pod restart. This distinction causes bugs: devs change a ConfigMap expecting live reload, but if it's injected as env vars, they get stale values until restart."
+  },
+  {
+    section: "Section 17: Kubernetes Core",
+    question: "What is a Kubernetes NetworkPolicy and what is the default behavior in a cluster without any NetworkPolicies configured?",
+    options: [
+      "NetworkPolicy is a firewall for node-to-node traffic; without one, nodes cannot communicate",
+      "By default all pod-to-pod traffic is allowed. A NetworkPolicy selects pods and specifies allowed ingress/egress. Once any NetworkPolicy selects a pod, all non-matching traffic to/from that pod is denied. To implement default-deny, apply a NetworkPolicy with empty ingress/egress selectors to every namespace",
+      "NetworkPolicy is only available with Calico CNI — other CNIs ignore NetworkPolicy resources",
+      "NetworkPolicy blocks traffic by default — you must add allow rules to enable any pod communication"
+    ],
+    answer: 1,
+    explanation: "Default: no NetworkPolicies = all pods can reach all pods cluster-wide. Once a NetworkPolicy selects a pod, it moves to deny-by-default for that pod — only explicitly allowed traffic passes. NetworkPolicy is enforced by the CNI plugin (Calico, Cilium, WeaveNet) — if the CNI doesn't support it (e.g., Flannel), the resource is accepted by the API but not enforced. EKS uses VPC CNI (aws-node) which supports NetworkPolicy via a separate NetworkPolicy controller (enabled since EKS 1.25). Default-deny pattern: apply a catch-all NetworkPolicy with empty spec to every namespace, then add specific allow rules."
+  },
+  {
+    section: "Section 17: Kubernetes Core",
+    question: "What is a PodDisruptionBudget (PDB), and what does it protect against that resource limits do not?",
+    options: [
+      "PDB limits how much CPU and memory a pod can use during cluster disruptions",
+      "PDB defines the minimum number/percentage of pods that must remain available during voluntary disruptions (kubectl drain, node upgrades, cluster autoscaler scale-down). It does NOT protect against involuntary disruptions (node failure, OOMKill). Resource limits control per-pod resource usage — PDB controls availability during planned maintenance",
+      "PDB is identical to minAvailable in a Deployment's rolling update strategy",
+      "PDB prevents pods from being evicted by the Kubernetes scheduler under any circumstances"
+    ],
+    answer: 1,
+    explanation: "PDB: spec.minAvailable: 2 (or maxUnavailable: 1). kubectl drain honors PDB — it won't evict a pod if doing so would violate the budget, blocking the drain until another pod becomes ready. Protects against: node upgrades, cluster autoscaler scale-down, manual drains. Does NOT protect against: node crash, OOMKill, pod eviction by kubelet under pressure. Common gotcha: a PDB with minAvailable equal to the replica count blocks all drains — always set minAvailable to replicas - 1 or use maxUnavailable: 1."
+  },
+  {
+    section: "Section 17: Kubernetes Core",
+    question: "What is an init container, and what problem does it solve that a regular container start command cannot?",
+    options: [
+      "Init containers are lightweight containers that run alongside app containers to provide sidecar functionality",
+      "Init containers run to completion before any app containers start, in sequence. They solve dependency ordering: wait for a database to be ready, run database migrations, or populate a shared volume with config/secrets before the app starts. If an init container fails, the pod is restarted (CrashLoopBackOff pattern applies)",
+      "Init containers are used only for secret injection — they fetch secrets and place them in environment variables for app containers",
+      "Init containers run after the main container exits to perform cleanup tasks like log shipping"
+    ],
+    answer: 1,
+    explanation: "Init containers: run to completion (exit 0) sequentially before app containers start. Use cases: (1) Wait for DB readiness: until pg_isready -h $DB_HOST; do sleep 2; done. (2) Run DB migrations before the app that serves traffic starts. (3) Download config/certs from Vault and write to a shared emptyDir volume. (4) Set sysctls that require privilege before dropping to non-root. App containers share volumes with init containers but not the lifecycle — if the app restarts, init containers don't re-run (unless the pod restarts from scratch)."
+  },
+  {
+    section: "Section 17: Kubernetes Core",
+    question: "A Deployment's rolling update is stuck at 75% complete — 3 old pods are not terminating and the new pods are Running. What is the most likely cause?",
+    options: [
+      "The new pods are consuming too much CPU — the scheduler is throttling the update",
+      "The maxSurge value is set to 0, preventing new pods from being created during the update",
+      "The old pods are not being terminated because the new pods have failing Readiness probes — a rolling update only proceeds when new pods become Ready. If new pods run but never become Ready, the update stalls waiting for them to pass readiness before terminating old pods",
+      "kubectl rollout is paused — resume it with kubectl rollout resume"
+    ],
+    answer: 2,
+    explanation: "Rolling update flow: create new pod → wait for it to pass Readiness → terminate an old pod → repeat. If new pods are Running but Readiness is failing (wrong config, dependency not reachable, port mismatch), the update stalls — old pods won't be terminated because Kubernetes won't reduce availability below minAvailable. The update appears 'stuck' at partial completion. Debug: kubectl describe pod <new-pod> to see readiness probe failures. This is a safe behavior — the old pods are still serving traffic. Never set maxUnavailable: 100% unless you accept full downtime during updates."
+  },
+  {
+    section: "Section 17: Kubernetes Core",
+    question: "What is Horizontal Pod Autoscaler (HPA) and what is its default metric source? What do you need to install to scale on custom metrics?",
+    options: [
+      "HPA scales cluster nodes automatically based on pod count; it uses CloudWatch metrics by default",
+      "HPA scales pod replica count based on observed metrics vs target. Default: CPU utilization (requests-based). Requires metrics-server to be installed in the cluster for CPU/memory metrics. For custom/external metrics (RPS, queue depth), install the Prometheus Adapter or KEDA (Kubernetes Event-Driven Autoscaling)",
+      "HPA only works with Deployments — StatefulSets cannot be scaled by HPA",
+      "HPA is built into the kubelet and requires no additional components to scale on CPU metrics"
+    ],
+    answer: 1,
+    explanation: "HPA requires metrics-server (provides CPU/memory via Kubernetes Metrics API). Default: scale when average CPU across pods exceeds target%. Cooldown: scaleDown stabilizationWindowSeconds (default 5min) prevents thrashing. For custom metrics: Prometheus Adapter exposes Prometheus metrics through the custom.metrics.k8s.io API. KEDA (event-driven) scales to zero and back — ideal for queue processors. HPA and Cluster Autoscaler work together: HPA adds pods → if no node has capacity, CA adds nodes. Conflict: don't manually set replicas on a HPA-managed Deployment — HPA will fight you."
+  },
+  {
+    section: "Section 17: Kubernetes Core",
+    question: "What is a Kubernetes ClusterRole vs a Role, and when must you use ClusterRole?",
+    options: [
+      "ClusterRole is for admin users; Role is for regular developers — the difference is purely about who is assigned",
+      "Role is namespace-scoped (grants access to resources in one namespace). ClusterRole is cluster-scoped. Use ClusterRole when: granting access to cluster-scoped resources (nodes, PVs, namespaces), granting the same permissions across all namespaces, or granting access to non-namespaced API groups. Bind with RoleBinding (namespace-scoped) or ClusterRoleBinding (cluster-wide)",
+      "ClusterRole and Role are identical — ClusterRole is just a Role with a wider scope annotation",
+      "ClusterRoles can only be bound to service accounts, not human users"
+    ],
+    answer: 1,
+    explanation: "Namespace-scoped resources (pods, services, deployments) → Role in that namespace. Cluster-scoped resources (nodes, PersistentVolumes, namespaces, CRDs) → ClusterRole required. Common pattern: a ClusterRole defining 'read pods' bound with a RoleBinding in specific namespaces gives namespace-level access without a ClusterRoleBinding. Principle of least privilege: never give ClusterRoleBinding when RoleBinding suffices. Audit regularly: kubectl get clusterrolebindings | grep default is often surprising in older clusters."
+  },
+
+  // ── Section 18: K8s Debugging (additional) ───────────────────────────────
+  {
+    section: "Section 18: K8s Debugging Playbook",
+    question: "A pod is OOMKilled repeatedly. kubectl describe shows exit code 137. What is your diagnostic and fix sequence?",
+    options: [
+      "Exit 137 means the app crashed with a segfault — check the application's core dump",
+      "Exit 137 = killed by SIGKILL (128+9), almost always OOMKill. Steps: (1) kubectl top pod to see actual memory usage vs limit. (2) kubectl describe pod — Limits and OOM events. (3) If usage legitimately exceeds limit, raise memory limit. (4) If usage grows unbounded, suspect a memory leak — profile with pprof/heap dumps. (5) Check if JVM/Go runtime is reading host RAM instead of cgroup limit",
+      "Exit 137 is a network timeout — check DNS resolution from inside the pod",
+      "Restart the pod with kubectl delete pod — OOMKill is transient and self-resolves"
+    ],
+    answer: 1,
+    explanation: "137 = 128 + SIGKILL (9) = OOMKilled by the kernel's OOM killer at the cgroup limit. Diagnostic: (1) kubectl top pod — is it at the limit? (2) kubectl describe pod — reason: OOMKilled. (3) Are limits set too low for the workload (raise) or is memory growing (investigate leak)? Classic JVM trap: JVM reads /proc/meminfo (host RAM) and sets heap to 25% of host = much larger than the cgroup limit → immediate OOMKill. Fix: set -Xmx explicitly or use -XX:MaxRAMPercentage with UseContainerSupport (JDK 8u191+, JDK 10+)."
+  },
+  {
+    section: "Section 18: K8s Debugging Playbook",
+    question: "A pod is in ImagePullBackOff. kubectl describe shows 'unauthorized: authentication required'. What are the three likely causes?",
+    options: [
+      "The pod is requesting too many CPU resources — reduce requests to fix the pull error",
+      "(1) Wrong image tag or image doesn't exist in the registry. (2) No imagePullSecret configured for a private registry — need a Secret of type docker-registry referenced in the pod spec or service account. (3) On EKS, the node's IAM role lacks ECR permissions (ecr:GetAuthorizationToken, ecr:BatchGetImage) — check the node group IAM role",
+      "ImagePullBackOff is always caused by a network connectivity issue between the node and the registry",
+      "The container runtime is misconfigured — restart containerd on the node to fix authentication"
+    ],
+    answer: 1,
+    explanation: "ImagePullBackOff diagnosis: (1) Tag typo or deleted image — verify with docker manifest inspect or aws ecr describe-images. (2) Private registry without credentials — create kubectl create secret docker-registry regcred ..., add to pod spec as imagePullSecrets or to the default ServiceAccount. (3) EKS ECR auth: node IAM role needs AmazonEC2ContainerRegistryReadOnly. Cross-account ECR: requires resource-based policy on the ECR repo AND the node role. (4) Rate limiting: Docker Hub limits anonymous pulls — use imagePullSecrets even for public images in high-volume clusters."
+  },
+  {
+    section: "Section 18: K8s Debugging Playbook",
+    question: "You run 'kubectl drain node-1' and it hangs indefinitely. What are the two most common blockers?",
+    options: [
+      "kubectl drain always takes 30 minutes — it waits for the default grace period",
+      "(1) A PodDisruptionBudget is blocking eviction — a PDB's minAvailable constraint would be violated by evicting the pod. Use kubectl describe pdb to identify it. (2) Pods managed by nothing (no owner reference — orphan pods) are not evicted by default — add --force flag or delete them manually",
+      "kubectl drain requires cluster-admin role — check RBAC permissions",
+      "The node is still receiving traffic — drain only works after removing the node from the load balancer"
+    ],
+    answer: 1,
+    explanation: "Drain blockers: (1) PDB violation: if minAvailable=2 and only 2 replicas exist, evicting any pod violates the PDB. Drain waits until another pod starts elsewhere first. Fix: scale up the Deployment before draining, or temporarily relax the PDB. (2) Unmanaged pods (no ReplicaSet/StatefulSet owner): kubectl drain refuses to delete them without --force to prevent data loss. (3) Local storage pods (emptyDir, hostPath): use --delete-emptydir-data to allow eviction. (4) DaemonSet pods: use --ignore-daemonsets (they'll restart on the node anyway)."
+  },
+  {
+    section: "Section 18: K8s Debugging Playbook",
+    question: "A pod is stuck in Terminating for 20 minutes. kubectl describe shows the pod is in 'Terminating' with no events. What has likely happened and how do you force-delete it?",
+    options: [
+      "The pod needs more memory to complete its shutdown sequence — increase memory limits",
+      "The pod is likely stuck because: (1) the preStop hook is hanging indefinitely, (2) the app isn't handling SIGTERM and waits the full terminationGracePeriodSeconds before SIGKILL, or (3) the node is offline and kubelet can't confirm deletion. Force delete: kubectl delete pod <name> --force --grace-period=0 — removes the object from etcd without waiting for kubelet confirmation",
+      "Terminating pods are waiting for PVC detachment — delete the PVC first",
+      "Terminating is a normal state that always resolves within 30 minutes without intervention"
+    ],
+    answer: 1,
+    explanation: "Termination sequence: SIGTERM → terminationGracePeriodSeconds (default 30s) → SIGKILL. Stuck causes: (1) preStop hook running indefinitely. (2) App ignoring SIGTERM — hung waiting for 30s then killed. (3) Node offline — kubelet never sends the deletion confirmation, pod stays in etcd. --force --grace-period=0 removes the pod resource from etcd immediately — if the node comes back online, any still-running container processes will be orphaned until kubelet cleans up. Use with caution for stateful pods — data may not be flushed."
+  },
+  {
+    section: "Section 18: K8s Debugging Playbook",
+    question: "Pods are being Evicted from a node. kubectl get events shows 'The node was low on resource: memory.' What is the sequence of events and how do you prevent it?",
+    options: [
+      "Eviction means the node has a hardware failure — replace the node immediately",
+      "Node memory pressure triggers kubelet eviction: BestEffort pods first, then Burstable pods using most above their request, finally Guaranteed. Prevention: (1) Set honest resource requests on all pods so the scheduler doesn't overpack nodes. (2) Set evictionHard thresholds with headroom. (3) Enable Cluster Autoscaler to add nodes before pressure builds. (4) Use LimitRange to enforce requests on all pods in a namespace",
+      "Eviction is caused by too many pods with imagePullPolicy: Always — reduce image pulls",
+      "Pod eviction under memory pressure means all evicted pods are permanently deleted and must be manually recreated"
+    ],
+    answer: 1,
+    explanation: "Kubelet eviction: when available memory drops below evictionHard.memory.available (default 100Mi), kubelet starts evicting pods. Eviction order: BestEffort first, then Burstable (sorted by memory usage above request), Guaranteed last. Evicted pods with owners (Deployment, RS) are rescheduled elsewhere. Orphan pods are gone. Prevention: requests act as the scheduler's packing guide — if all pods set honest requests, the node won't be overpacked. LimitRange sets namespace-level defaults for pods without requests. ResourceQuota limits total resource consumption per namespace."
+  },
+  {
+    section: "Section 18: K8s Debugging Playbook",
+    question: "You have a running pod that you suspect has a DNS resolution issue. How do you debug DNS from inside the pod without modifying it?",
+    options: [
+      "DNS can only be debugged by restarting the CoreDNS pods in kube-system",
+      "Use kubectl exec to run nslookup or dig from inside the pod. If the pod has no shell, launch a temporary debug pod in the same namespace: kubectl run -it debug --image=busybox --rm -- nslookup kubernetes.default. Check /etc/resolv.conf inside the pod for search domains and nameserver. Verify CoreDNS pods are Running: kubectl get pods -n kube-system -l k8s-app=kube-dns",
+      "DNS issues in Kubernetes are always caused by the node's /etc/resolv.conf — fix it on the node",
+      "kubectl logs coredns will show all DNS queries from all pods in real time"
+    ],
+    answer: 1,
+    explanation: "DNS debug sequence: (1) kubectl exec <pod> -- cat /etc/resolv.conf — check nameserver (should be kube-dns ClusterIP, usually 10.96.0.10) and search domains. (2) kubectl exec <pod> -- nslookup kubernetes.default — basic cluster DNS test. (3) kubectl exec <pod> -- nslookup <service>.<namespace>.svc.cluster.local — full FQDN test. (4) kubectl get pods -n kube-system -l k8s-app=kube-dns — CoreDNS running? (5) kubectl logs -n kube-system -l k8s-app=kube-dns — CoreDNS error logs. ndots:5 (default) causes up to 5 DNS queries per lookup — can cause latency; reduce with ndots:2 for external domains."
+  },
+  {
+    section: "Section 17: Kubernetes Core",
+    question: "What is Helm, and what is the difference between 'helm upgrade' and 'helm upgrade --install'? What does a failed upgrade leave behind?",
+    options: [
+      "Helm is a container registry for Kubernetes; upgrade replaces the registry credentials",
+      "Helm is a Kubernetes package manager. A chart = templated K8s manifests + values. 'helm upgrade' requires an existing release; '--install' creates the release if it doesn't exist (upsert behavior). A failed upgrade leaves the release in a 'failed' state with the previous revision still active — roll back with 'helm rollback <release> <revision>'",
+      "helm upgrade --install is unsafe and should never be used in production CI pipelines",
+      "A failed helm upgrade automatically rolls back to the previous revision without any action needed"
+    ],
+    answer: 1,
+    explanation: "Helm release lifecycle: install → upgrade (n times) → rollback/uninstall. Each upgrade increments the revision number (stored as Secrets in the namespace). Failed upgrade: release state = failed, previous revision is still deployed and serving traffic. helm rollback app 3 reinstates revision 3's manifests. helm history app shows all revisions with status. Best practice: use --atomic flag (auto-rollback on upgrade failure) in CI/CD pipelines. helm upgrade --install is idempotent and safe for GitOps pipelines — creates on first run, upgrades on subsequent runs."
+  },
+
   // ── AWS: Networking & VPC ─────────────────────────────────────────────────
   {
     section: "AWS: Networking & VPC",
