@@ -1,0 +1,13 @@
+
+zombie - a process that has exited but stays in the process table as a PID and exit status.
+it's there until it's still-living parent calls wait() to collect it.
+
+a zombie and <defunct> are the same thing
+
+orphan - a still running process whoae parent died so it gets adopted by PID 1 (init) which
+will reap it when it eventually exits. 
+
+
+zombie - the child died and is waiting to be collected. 
+
+orphan - the parent died and the living child got re-homed. 

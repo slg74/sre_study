@@ -1173,6 +1173,127 @@ const ALL_QUESTIONS = [
     explanation: "Failover: standby promoted → DNS CNAME updated to new primary endpoint (~60-120s). All existing connections to the old primary are dropped. Your app must have retry logic and honor short DNS TTLs. Connection poolers (RDS Proxy) absorb most of this."
   },
 
+  {
+    section: "Section 14: RDS",
+    question: "Your single-AZ RDS Postgres instance just had its underlying hardware fail. You have Multi-AZ enabled. What happens to the connection string your app uses?",
+    options: [
+      "You must manually update it to the standby's new endpoint",
+      "Nothing — the same DNS endpoint CNAME-flips to the standby",
+      "The read replica is automatically promoted and you point at it",
+      "Connections fail until you restore from the latest snapshot"
+    ],
+    answer: 1,
+    explanation: "Multi-AZ failover is transparent at the DNS layer. RDS flips the CNAME of your existing endpoint to the standby — your app reconnects to the same hostname. Existing connections drop, but no endpoint change is required. This is the whole point of Multi-AZ."
+  },
+  {
+    section: "Section 14: RDS",
+    question: "A teammate proposes using your Multi-AZ standby to offload heavy reporting reads. Your response?",
+    options: [
+      "Good idea — the standby is sitting idle, may as well use it",
+      "Only if you enable the read endpoint on it first",
+      "You can't — the Multi-AZ standby serves no traffic; that's what read replicas are for",
+      "Fine, but watch ReplicaLag on the standby"
+    ],
+    answer: 2,
+    explanation: "The Multi-AZ standby is a hot standby for failover only — it accepts zero read or write traffic. If you need read scale, create Read Replicas. Aurora is the exception: Aurora Replicas share storage and CAN serve reads while also being failover targets."
+  },
+  {
+    section: "Section 14: RDS",
+    question: "Which RDS feature gives you cross-region disaster recovery?",
+    options: [
+      "Multi-AZ",
+      "Read replica (cross-region)",
+      "Automated backups, which are global by default",
+      "Parameter groups"
+    ],
+    answer: 1,
+    explanation: "Multi-AZ is intra-region only. Cross-region read replicas replicate asynchronously to another region and can be manually promoted for DR. Automated backups stay in the same region unless you explicitly copy them cross-region."
+  },
+  {
+    section: "Section 14: RDS",
+    question: "\"DB suddenly slow, CPU sitting at 12%, DiskQueueDepth climbing, read latency jumped 1ms→40ms.\" First thing you suspect on a gp2 volume?",
+    options: [
+      "max_connections exhausted",
+      "ReplicaLag",
+      "BurstBalance exhausted (I/O credits gone)",
+      "FreeableMemory hit zero"
+    ],
+    answer: 2,
+    explanation: "gp2 volumes earn I/O credits when idle and burn them under load. When BurstBalance hits zero, throughput throttles hard — DiskQueueDepth climbs, read latency spikes, and CPU stays low because the DB is just waiting on disk. Fix: migrate to gp3 (which has a consistent baseline) or provisioned IOPS."
+  },
+  {
+    section: "Section 14: RDS",
+    question: "You change a static parameter in a parameter group. When does it take effect?",
+    options: [
+      "Immediately, live",
+      "After the instance reboots",
+      "Only after a failover",
+      "Never — static params are read-only"
+    ],
+    answer: 1,
+    explanation: "RDS parameters are either dynamic (apply immediately, no restart) or static (require a reboot to take effect). Changing a static param sets it to 'pending-reboot' state until you explicitly reboot the instance."
+  },
+  {
+    section: "Section 14: RDS",
+    question: "A Lambda function scales to 3,000 concurrent executions and your RDS starts refusing connections. Best fix?",
+    options: [
+      "Bump max_connections to 10,000",
+      "Put RDS Proxy in front to pool connections",
+      "Switch to Multi-AZ",
+      "Add a read replica"
+    ],
+    answer: 1,
+    explanation: "Lambda opens a new connection per invocation. RDS Proxy maintains a warm connection pool and multiplexes thousands of Lambda connections onto a small number of DB connections — the durable fix. Bumping max_connections is a temporary band-aid and can destabilize the DB under memory pressure."
+  },
+  {
+    section: "Section 14: RDS",
+    question: "What's the symptom signature of connection-pool queuing (as opposed to outright connection refusal)?",
+    options: [
+      "5xx errors spike, latency flat",
+      "Latency spikes, error rate stays normal",
+      "Both latency and errors spike together",
+      "CPU spikes, latency flat"
+    ],
+    answer: 1,
+    explanation: "When connections queue in the pool, requests wait but eventually get served — latency rises while errors stay near zero. Outright connection refusal (pool exhausted, max_connections hit) produces errors immediately. Latency-without-errors is the tell for queuing pressure."
+  },
+  {
+    section: "Section 14: RDS",
+    question: "Point-in-time recovery lets you restore to any second within the retention window. What does the restore produce?",
+    options: [
+      "It rolls back the existing instance in place",
+      "A new instance with a new endpoint",
+      "A read replica of the original",
+      "A manual snapshot you then restore separately"
+    ],
+    answer: 1,
+    explanation: "PITR always creates a brand-new RDS instance with a new endpoint — it never modifies the source instance. You then validate data, update your connection string or do a blue/green cutover. This also means PITR can run without affecting the production instance."
+  },
+  {
+    section: "Section 14: RDS",
+    question: "Why is Aurora's replica lag typically tiny and its failover fast, compared to standard RDS read replicas?",
+    options: [
+      "Aurora replicas are synchronous copies kept in lockstep",
+      "Replicas share one distributed storage layer instead of copying data over the network",
+      "Aurora keeps all replicas in the same AZ to minimize distance",
+      "Aurora disables replication during failover"
+    ],
+    answer: 1,
+    explanation: "Aurora separates compute from storage. All instances (primary + replicas) read/write the same distributed storage volume — there's no data to ship between them. Replica lag is just the time to propagate cache invalidations, typically sub-10ms. Failover promotes a replica without copying any data (~30s vs ~60-120s for standard RDS)."
+  },
+  {
+    section: "Section 14: RDS",
+    question: "You need to modify a parameter but it's in the default.postgres15 group. Correct move?",
+    options: [
+      "Edit the default group directly — it's there to be used",
+      "Clone it to a custom parameter group, modify that, attach it to the instance",
+      "You can't modify parameters on RDS at all, it's managed",
+      "Modify it via the Postgres ALTER SYSTEM command instead"
+    ],
+    answer: 1,
+    explanation: "AWS default parameter groups are read-only — you cannot edit them. The correct workflow: create a custom parameter group (clone or new), set your values there, then associate it with the instance. ALTER SYSTEM is blocked on RDS since AWS manages postgresql.conf directly."
+  },
+
   // ── Section 15: SRE Layer ─────────────────────────────────────────────────
   {
     section: "Section 15: The SRE Layer",
