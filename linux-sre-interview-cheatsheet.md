@@ -220,8 +220,78 @@ Confirm: `ps -eLf | wc -l`, `ulimit -u`, `pids.current` in the cgroup, `ps aux |
 - **Four golden signals**: latency, traffic, errors, **saturation**. Alert on *symptoms* (user-facing SLO burn), not causes (CPU%).
 - **Toil**: manual, repetitive, automatable, scales with growth — the job is eliminating it.
 - **Incident flow**: ack → severity → IC + comms roles → **mitigate first** (rollback/failover/scale), root-cause later → blameless postmortem with owned action items. Metrics: MTTD/MTTR.
-- **PagerDuty**: escalation policies, schedules/overrides, and a story about killing noisy alerts (alert fatigue) scores points.
 - **New Relic**: APM transactions/distributed traces, NRQL shape — `SELECT percentile(duration, 99) FROM Transaction WHERE appName='X' FACET host TIMESERIES` — alert conditions tied to SLOs.
+
+## 15c. PagerDuty — On-Call Best Practices
+
+### Core concepts
+
+- **Acknowledge** = "I'm looking at it." Stops escalation and repeat notifications. Incident stays **open**.
+- **Resolve** = "It's fixed." Closes the incident, stops all notifications.
+- Confusing the two is a common mistake: acking without resolving leaves ghost incidents; resolving without fixing kills the safety net.
+
+### Escalation policies
+
+- Define a **sequence of targets** (user / schedule / team) with a **timeout** per level.
+- If no ack within the Level 1 timeout → PD automatically notifies Level 2. No human intervention required.
+- Best practice: minimum 2 levels. Level 1 = on-call engineer. Level 2 = senior / team lead. Level 3 = manager (for prolonged SEV1s).
+- **Repeat notifications**: configure PD to re-notify the same person every N minutes within a level before escalating — catches missed vibrations.
+
+### On-call schedules
+
+- **Weekly rotations** are standard. Overlap by a day for handoff.
+- **Handoff checklist**: outgoing on-call documents open incidents, known flappy alerts, and anything mid-investigation.
+- **Overrides**: for planned leave — add manually or via API. Never let a rotation go uncovered.
+- **Follow-the-sun**: for global teams, route pages to whoever is in business hours. Reduces wake-ups.
+
+### Alert fatigue — the biggest on-call risk
+
+Alert fatigue = high page volume causes engineers to tune out → real incident gets ignored.
+
+**Signs you have it:** > 5 pages/night average, alerts that auto-resolve before the engineer can act, engineers silencing their phones.
+
+**The SRE fix:**
+- Every alert must be **actionable** (you know what to do), **urgent** (can't wait until morning), and **symptom-based** (alert on user impact, not CPU%).
+- Any alert that fires and auto-resolves within minutes = delete or tune the threshold.
+- Any alert with no runbook = fix it before the next rotation.
+- Track alert volume weekly per service. Treat noisy alerts as bugs.
+
+### Severity levels (common convention)
+
+| Sev | Impact | Response |
+|-----|--------|----------|
+| SEV1 / P1 | Production down, data loss, revenue impact | All hands, IC assigned, war room immediately |
+| SEV2 / P2 | Significant degradation, core feature broken | On-call + lead, active mitigation |
+| SEV3 / P3 | Minor impact, workaround available | Fix within business hours |
+| SEV4 / P4 | Cosmetic, no user impact | Ticket, fix in next sprint |
+
+### SEV1 incident response order (say this cold)
+
+1. **Acknowledge** the page
+2. **Assess severity** — is this actually SEV1?
+3. **Open a bridge** (Slack war room / Zoom) — assign an **Incident Commander** to own communication
+4. **Mitigate first** — rollback, failover, scale, kill the bad job. Root cause comes later.
+5. **Communicate status** to stakeholders every 15–30 min (status page + Slack)
+6. Once stable: **root cause analysis**
+7. **Resolve** in PagerDuty
+8. **Blameless postmortem** with owned action items and due dates
+
+> "Mitigate first, root cause later" — the core SRE incident principle.
+
+### Runbook requirements (every actionable alert needs one)
+
+- What is this alert and what does it measure?
+- What is the first thing to check?
+- How do you mitigate it?
+- When and how do you escalate?
+- Link to relevant dashboards / logs
+
+### PagerDuty architecture
+
+- **Service**: logical grouping of related alerts (e.g. "payments-api"). Has its own escalation policy.
+- **Integration**: how alerts arrive — CloudWatch, Datadog, New Relic, custom webhook via Events API.
+- **Event rules / routing**: filter/deduplicate/suppress before creating incidents. Suppress known maintenance windows here.
+- **Stakeholder licenses**: notify non-technical stakeholders (PMs, executives) without giving them full PD access.
 
 ## 15b. CIDR & Subnetting
 

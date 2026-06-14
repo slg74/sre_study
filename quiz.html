@@ -1696,6 +1696,67 @@ const ALL_QUESTIONS = [
     explanation: "SLI: the metric you measure. SLO: the target you set on that metric. SLA: the external contract with customers that includes penalties when SLOs are missed. SLOs should be tighter than SLAs to give yourself a buffer."
   },
 
+  {
+    section: "Section 15: The SRE Layer",
+    question: "You acknowledge a PagerDuty incident. What does acknowledging actually mean, and what does it NOT mean?",
+    options: [
+      "Acknowledging resolves the incident and stops all notifications to other responders",
+      "Acknowledging means 'I am working on it' — it stops escalation and silences repeat notifications, but the incident is still open until explicitly resolved",
+      "Acknowledging transfers ownership to the next on-call person in the rotation",
+      "Acknowledging starts a 30-minute SLA timer before the incident auto-resolves"
+    ],
+    answer: 1,
+    explanation: "Acknowledge = I own this, I'm investigating. It halts the escalation policy (no more notifying the next tier) and quiets repeat alerts. The incident stays OPEN. Resolve = the problem is fixed, close the incident. Confusing the two leaves incidents open indefinitely or kills escalation prematurely before anyone is actually working it."
+  },
+  {
+    section: "Section 15: The SRE Layer",
+    question: "An escalation policy has two levels: Level 1 is the on-call engineer (5-min timeout), Level 2 is the team lead. The engineer's phone is on silent. What happens?",
+    options: [
+      "The incident stays at Level 1 indefinitely until someone acknowledges",
+      "After 5 minutes with no acknowledgement, PagerDuty automatically notifies the Level 2 target (team lead)",
+      "PagerDuty resolves the incident automatically after the timeout to prevent alert spam",
+      "The incident escalates to Level 2 only if the on-call engineer explicitly requests it"
+    ],
+    answer: 1,
+    explanation: "Escalation policies define a sequence of targets with time-based triggers. If no ack within the Level 1 timeout, PD moves to Level 2 — this is the safety net for missed pages. Well-designed policies have at least 2 levels. The on-call engineer being unreachable should never mean an incident goes unworked."
+  },
+  {
+    section: "Section 15: The SRE Layer",
+    question: "Your team is averaging 8 pages per night per on-call. Engineers are burning out and starting to ignore alerts. What is the root problem and what is the SRE fix?",
+    options: [
+      "The on-call rotation needs more engineers to distribute the load",
+      "Alert fatigue — high page volume causes engineers to tune out, risking real incidents being missed. Fix: audit alert volume, eliminate noisy/flappy alerts, tune thresholds, add deduplication, and delete any alert with no clear action",
+      "The monitoring system needs to be replaced with a newer tool",
+      "Pages should be downgraded to email notifications to reduce interrupt pressure"
+    ],
+    answer: 1,
+    explanation: "Alert fatigue is one of the most dangerous on-call failure modes — when every alert is noise, the real one gets ignored. SRE principle: every page should be actionable, urgent, and require a human. If an alert fires and the engineer doesn't know what to do, or it auto-resolves, or it can wait until morning — it should not be a page. Track alert volume weekly and treat noisy alerts as bugs."
+  },
+  {
+    section: "Section 15: The SRE Layer",
+    question: "What are the properties of a well-designed PagerDuty alert / runbook pair?",
+    options: [
+      "The alert fires on any anomaly; the runbook documents the entire system architecture",
+      "The alert is actionable (clear response exists), urgent (requires immediate human action), and links to a runbook with: what fired, what to check first, how to mitigate, and when to escalate",
+      "The alert fires at a fixed threshold; the runbook lists all team members' phone numbers",
+      "Alerts should be broad to catch as many issues as possible; runbooks are optional for experienced engineers"
+    ],
+    answer: 1,
+    explanation: "Good alert design: (1) Actionable — you know what to do at 3 AM. (2) Urgent — can't wait until morning. (3) Symptom-based — alert on user-facing impact (error rate, latency SLO burn), not causes (CPU%). The runbook answers: what is this, what to look at, how to stop the bleeding, when to escalate. An alert with no runbook is a bet that the on-call already knows — a bet you lose at the worst time."
+  },
+  {
+    section: "Section 15: The SRE Layer",
+    question: "A SEV1 incident starts at 2 AM. Walk through the correct response order.",
+    options: [
+      "Root cause → fix → notify stakeholders → write postmortem",
+      "Acknowledge → assess severity → open war room + assign IC → mitigate first (rollback/failover/scale) → communicate status → root cause → resolve → postmortem",
+      "Notify all stakeholders → debug root cause → apply fix → resolve",
+      "Escalate to management immediately → wait for approval → then begin mitigation"
+    ],
+    answer: 1,
+    explanation: "Mitigate first, root cause later — this is the core SRE incident principle. The order: (1) Ack the page. (2) Assess severity, declare SEV1 if warranted. (3) Open a bridge (Zoom/Slack), assign an Incident Commander to own communication. (4) Mitigate — rollback, failover, scale, kill the bad job. (5) Communicate status to stakeholders every 15-30 min. (6) Once stable, root cause. (7) Resolve in PD. (8) Blameless postmortem with action items."
+  },
+
   // ── Section 16: Containers ────────────────────────────────────────────────
   {
     section: "Section 16: Containers Under the Hood",
