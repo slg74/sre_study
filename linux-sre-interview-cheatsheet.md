@@ -345,6 +345,55 @@ Say it like: *"A container is a process with namespaces for isolation, cgroups f
 
 **The closing line for any K8s debugging answer:** "...and if the node itself is sick, I'm back to Linux fundamentals — kubelet logs, dmesg, D-states, disk pressure. Kubernetes is a scheduler on top of everything in Part 1."
 
+## Top 5 Kubernetes Commands (Daily Use)
+
+**1. `kubectl get` — see what's running**
+```bash
+kubectl get pods                          # all pods in default namespace
+kubectl get pods -n kube-system           # specific namespace
+kubectl get pods -A                       # all namespaces
+kubectl get pods -o wide                  # add node/IP columns
+kubectl get all                           # pods, services, deployments, etc.
+```
+
+**2. `kubectl describe` — diagnose why something is broken**
+```bash
+kubectl describe pod <name>               # events, resource limits, restart reason
+kubectl describe node <name>             # capacity, conditions, running pods
+kubectl describe deployment <name>       # rollout status, replica counts
+```
+The `Events:` section at the bottom is almost always where the answer is.
+
+**3. `kubectl logs` — read output**
+```bash
+kubectl logs <pod>                        # current logs
+kubectl logs <pod> -f                     # follow (tail -f equivalent)
+kubectl logs <pod> --previous            # logs from the crashed previous container
+kubectl logs <pod> -c <container>        # specific container in a multi-container pod
+kubectl logs -l app=api --tail=100       # logs from all pods matching a label
+```
+
+**4. `kubectl exec` — get inside a running container**
+```bash
+kubectl exec -it <pod> -- bash            # interactive shell
+kubectl exec -it <pod> -- sh              # if no bash (alpine images)
+kubectl exec <pod> -- env                 # dump env vars without interactive
+kubectl exec -it <pod> -c <sidecar> -- sh  # specific container
+```
+
+**5. `kubectl rollout` — manage deployments**
+```bash
+kubectl rollout status deployment/<name>  # watch a deploy complete
+kubectl rollout history deployment/<name> # see revision history
+kubectl rollout undo deployment/<name>    # roll back to previous revision
+kubectl rollout restart deployment/<name> # rolling restart (recycles pods gracefully)
+```
+
+**Bonus — find recently crashed pods fast:**
+```bash
+kubectl get pods --sort-by='.status.startTime' | tail -20
+```
+
 ---
 ---
 
