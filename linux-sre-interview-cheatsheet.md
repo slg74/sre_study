@@ -223,6 +223,66 @@ Confirm: `ps -eLf | wc -l`, `ulimit -u`, `pids.current` in the cgroup, `ps aux |
 - **PagerDuty**: escalation policies, schedules/overrides, and a story about killing noisy alerts (alert fatigue) scores points.
 - **New Relic**: APM transactions/distributed traces, NRQL shape — `SELECT percentile(duration, 99) FROM Transaction WHERE appName='X' FACET host TIMESERIES` — alert conditions tied to SLOs.
 
+## 15b. CIDR & Subnetting
+
+**The formula — memorize this cold:**
+> Usable hosts = **2^(32 − prefix) − 2**
+> (subtract 2 for network address and broadcast address)
+
+**Common prefix lengths:**
+
+| Prefix | Host bits | Total IPs | Usable hosts | Subnet mask |
+|--------|-----------|-----------|--------------|-------------|
+| /20 | 12 | 4,096 | **4,094** | 255.255.240.0 |
+| /21 | 11 | 2,048 | 2,046 | 255.255.248.0 |
+| /22 | 10 | 1,024 | **1,022** | 255.255.252.0 |
+| /23 | 9 | 512 | 510 | 255.255.254.0 |
+| /24 | 8 | 256 | **254** | 255.255.255.0 |
+| /25 | 7 | 128 | 126 | 255.255.255.128 |
+| /26 | 6 | 64 | 62 | 255.255.255.192 |
+| /27 | 5 | 32 | **30** | 255.255.255.224 |
+| /28 | 4 | 16 | **11*** | 255.255.255.240 |
+| /32 | 0 | 1 | 1 (single host) | 255.255.255.255 |
+
+*AWS reserves 5 IPs per subnet (network, router, DNS, reserved, broadcast) → /28 gives 11 usable.
+
+**RFC 1918 private ranges (memorize all three):**
+- `10.0.0.0/8` — 16.7M addresses (Class A)
+- `172.16.0.0/12` — covers 172.16.x.x–172.31.x.x, 1M addresses (Class B)
+- `192.168.0.0/16` — 65K addresses (Class C)
+
+**Special ranges:**
+- `0.0.0.0/0` — default route, matches all IPs
+- `127.0.0.0/8` — loopback
+- `169.254.0.0/16` — link-local (APIPA / AWS IMDS at 169.254.169.254 / VPC DNS at 169.254.169.253)
+- `/32` — single host route
+
+**Key operations:**
+
+*Network address*: AND the IP with the subnet mask.
+> 192.168.5.130 & 255.255.255.128 (/25) = 192.168.5.128
+
+*Broadcast address*: OR the network address with the inverted mask.
+> 192.168.5.128 | 0.0.0.127 = 192.168.5.255
+
+*How many /24s fit in a /16?*: 2^(24−16) = 256
+
+*Aggregation*: two blocks aggregate only when contiguous AND aligned to the summary boundary.
+> 10.0.0.0/24 + 10.0.1.0/24 → 10.0.0.0/23 (differ only in bit 23)
+
+**AWS-specific:**
+- VPC CIDR: /16 (max) to /28 (min)
+- AWS reserves 5 IPs per subnet: .0 (network), .1 (VPC router), .2 (DNS), .3 (future), last (broadcast)
+- Typical pattern: /16 VPC → /24 subnets per tier per AZ — uses 9 of 256 available /24 blocks in a /16, leaves room to grow
+- Secondary CIDRs: up to 4 additional blocks can be added to a VPC
+
+**Quick mental math shortcuts:**
+- /22 boundary repeats every **4** in the third octet (4.0, 8.0, 12.0…)
+- /23 boundary repeats every **2** in the third octet
+- /25 splits a /24 in half at **.128**
+- /26 splits into quarters at **.0, .64, .128, .192**
+- /27 splits into eighths at **.0, .32, .64, .96, .128, .160, .192, .224**
+
 ---
 ---
 

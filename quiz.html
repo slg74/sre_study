@@ -2333,6 +2333,248 @@ const ALL_QUESTIONS = [
   },
 
 
+  // ── AWS: CIDR & Subnetting ────────────────────────────────────────────────
+  {
+    section: "AWS: CIDR & Subnetting",
+    question: "How many usable host addresses does a /24 subnet provide, and why not 256?",
+    options: [
+      "256 — every IP in the block is usable",
+      "254 — the network address and broadcast address are reserved and cannot be assigned to hosts",
+      "255 — only the broadcast address is reserved",
+      "252 — four addresses are always reserved by convention"
+    ],
+    answer: 1,
+    explanation: "A /24 has 2^8 = 256 total addresses. Two are reserved: the network address (first IP, e.g. 10.0.1.0) and the broadcast address (last IP, e.g. 10.0.1.255). Usable hosts = 256 − 2 = 254. The general formula: 2^(32−prefix) − 2."
+  },
+  {
+    section: "AWS: CIDR & Subnetting",
+    question: "What is the formula for calculating usable hosts in an IPv4 subnet?",
+    options: [
+      "2^prefix − 2",
+      "2^(32 − prefix) − 2",
+      "32 − prefix",
+      "2^(32 − prefix)"
+    ],
+    answer: 1,
+    explanation: "The host portion is (32 − prefix) bits wide. 2^(32−prefix) gives total addresses; subtract 2 for network and broadcast. Example: /22 → 2^10 − 2 = 1022 usable hosts. The −2 trips people up — always subtract it."
+  },
+  {
+    section: "AWS: CIDR & Subnetting",
+    question: "How many usable hosts does a /22 subnet provide?",
+    options: [
+      "512",
+      "1022",
+      "1024",
+      "2046"
+    ],
+    answer: 1,
+    explanation: "Host bits = 32 − 22 = 10. Total addresses = 2^10 = 1024. Usable = 1024 − 2 = 1022. A /22 spans 4 class-C blocks (e.g. 10.0.4.0–10.0.7.255). Common in AWS VPC subnets for mid-size workloads."
+  },
+  {
+    section: "AWS: CIDR & Subnetting",
+    question: "How many usable hosts does a /20 subnet provide?",
+    options: [
+      "2048",
+      "4094",
+      "4096",
+      "8190"
+    ],
+    answer: 1,
+    explanation: "Host bits = 32 − 20 = 12. Total = 2^12 = 4096. Usable = 4096 − 2 = 4094. A /20 spans 16 class-C blocks. AWS recommends /20 or larger for VPC subnets when you expect significant scaling."
+  },
+  {
+    section: "AWS: CIDR & Subnetting",
+    question: "What does a /32 prefix represent?",
+    options: [
+      "The entire IPv4 address space",
+      "A single specific host — exactly one IP address",
+      "A loopback-only subnet",
+      "An invalid prefix — /32 cannot be routed"
+    ],
+    answer: 1,
+    explanation: "A /32 has 0 host bits — it identifies exactly one IP. Used in: security group rules (allow a specific IP), host routes, BGP /32 advertisements for high-availability IPs, and AWS Elastic IPs in route tables. 2^0 = 1 total address, 1 − 2 = −1 usable (the math breaks — /32 is a special case: that one IP is the host itself)."
+  },
+  {
+    section: "AWS: CIDR & Subnetting",
+    question: "What does 0.0.0.0/0 represent and where do you see it?",
+    options: [
+      "The null route — traffic matching it is dropped",
+      "The default route — matches all IP addresses; used in route tables to send unmatched traffic to a gateway",
+      "The loopback range — equivalent to 127.0.0.0/8",
+      "An invalid CIDR — /0 is not a legal prefix length"
+    ],
+    answer: 1,
+    explanation: "0.0.0.0/0 is the default route. Prefix length 0 means 0 bits must match — every IP matches. In AWS route tables: a 0.0.0.0/0 → IGW makes a subnet public. 0.0.0.0/0 → NAT GW makes it private-with-egress. In security groups, it means 'any source IP'."
+  },
+  {
+    section: "AWS: CIDR & Subnetting",
+    question: "What is the subnet mask for a /22?",
+    options: [
+      "255.255.248.0",
+      "255.255.252.0",
+      "255.255.254.0",
+      "255.255.255.0"
+    ],
+    answer: 1,
+    explanation: "22 bits set to 1: 11111111.11111111.11111100.00000000 = 255.255.252.0. The third octet: 11111100 = 128+64+32+16+8+4 = 252. Quick check: host bits = 10, so the boundary repeats every 1024 addresses (every 4 in the third octet)."
+  },
+  {
+    section: "AWS: CIDR & Subnetting",
+    question: "What is the subnet mask for a /20?",
+    options: [
+      "255.255.224.0",
+      "255.255.240.0",
+      "255.255.248.0",
+      "255.255.252.0"
+    ],
+    answer: 1,
+    explanation: "20 bits set to 1: 11111111.11111111.11110000.00000000 = 255.255.240.0. Third octet: 11110000 = 128+64+32+16 = 240. The boundary repeats every 16 in the third octet (e.g. 10.0.0.0, 10.0.16.0, 10.0.32.0…)."
+  },
+  {
+    section: "AWS: CIDR & Subnetting",
+    question: "What is the broadcast address of 10.0.4.0/22?",
+    options: [
+      "10.0.4.255",
+      "10.0.5.255",
+      "10.0.6.255",
+      "10.0.7.255"
+    ],
+    answer: 3,
+    explanation: "10.0.4.0/22 spans 1024 addresses: 10.0.4.0–10.0.7.255. The broadcast is the last address: 10.0.7.255. Quick method: host bits = 10, so add 1023 to the network address. 10.0.4.0 + 1023 = 10.0.7.255 (4×256 + 0 + 1023 = 4×256 + 1023; 1023 = 3×256 + 255 → third octet +3, fourth = 255)."
+  },
+  {
+    section: "AWS: CIDR & Subnetting",
+    question: "Is 10.0.5.200 inside the subnet 10.0.4.0/22?",
+    options: [
+      "No — it's in a different /24 block",
+      "Yes — 10.0.4.0/22 covers 10.0.4.0 through 10.0.7.255",
+      "Only if 10.0.5.0/24 is explicitly added as a secondary CIDR",
+      "No — /22 subnets only include addresses with the same third octet"
+    ],
+    answer: 1,
+    explanation: "10.0.4.0/22 covers 10.0.4.0–10.0.7.255 (4 consecutive /24 blocks). 10.0.5.200 falls in the 10.0.5.x block, which is within that range. The /22 boundary doesn't care about the third octet value — it covers all IPs where the first 22 bits match 10.0.4.0."
+  },
+  {
+    section: "AWS: CIDR & Subnetting",
+    question: "You need a subnet with at least 500 usable hosts. What is the smallest (most specific) prefix that fits?",
+    options: [
+      "/24 — 254 hosts (not enough)",
+      "/23 — 510 usable hosts",
+      "/22 — 1022 usable hosts",
+      "/25 — 126 usable hosts"
+    ],
+    answer: 1,
+    explanation: "/24 = 254 — too small. /23 = 2^9 − 2 = 510 — fits with headroom. /22 = 1022 — works but wastes space. Always pick the smallest block that satisfies the requirement. /23 is the right answer here."
+  },
+  {
+    section: "AWS: CIDR & Subnetting",
+    question: "How many /24 subnets can you carve from a /16 block?",
+    options: [
+      "16",
+      "64",
+      "256",
+      "512"
+    ],
+    answer: 2,
+    explanation: "Bits to borrow = 24 − 16 = 8. Number of subnets = 2^8 = 256. Each /24 provides 254 hosts. A /16 like 10.0.0.0/16 gives you 10.0.0.0/24 through 10.0.255.0/24 — 256 subnets."
+  },
+  {
+    section: "AWS: CIDR & Subnetting",
+    question: "What is the network address of 192.168.5.130/25?",
+    options: [
+      "192.168.5.0",
+      "192.168.5.1",
+      "192.168.5.128",
+      "192.168.5.130"
+    ],
+    answer: 2,
+    explanation: "A /25 splits a /24 in half: 192.168.5.0–192.168.5.127 and 192.168.5.128–192.168.5.255. 130 > 127, so it falls in the second half. Network address = 192.168.5.128. Mask = 255.255.255.128. AND 130 with 128 → 128."
+  },
+  {
+    section: "AWS: CIDR & Subnetting",
+    question: "A /27 subnet — how many host bits, and how many usable addresses?",
+    options: [
+      "3 bits, 6 hosts",
+      "4 bits, 14 hosts",
+      "5 bits, 30 hosts",
+      "6 bits, 62 hosts"
+    ],
+    answer: 2,
+    explanation: "Host bits = 32 − 27 = 5. Total = 2^5 = 32. Usable = 32 − 2 = 30. /27 subnets repeat every 32 addresses in the last octet (e.g. .0, .32, .64, .96, .128, .160, .192, .224). Common for small service subnets."
+  },
+  {
+    section: "AWS: CIDR & Subnetting",
+    question: "Can 10.0.0.0/24 and 10.0.1.0/24 be summarized into a single CIDR block?",
+    options: [
+      "No — only subnets in the same /24 can be summarized",
+      "Yes — they summarize to 10.0.0.0/23",
+      "Yes — they summarize to 10.0.0.0/22",
+      "Only if they share the same default gateway"
+    ],
+    answer: 1,
+    explanation: "10.0.0.0 and 10.0.1.0 differ only in bit 23 (the last bit of the third octet). Their common prefix is 23 bits → 10.0.0.0/23. Check: /23 covers 10.0.0.0–10.0.1.255, which is exactly those two /24s. For aggregation to work, blocks must be contiguous AND aligned to the summary boundary."
+  },
+  {
+    section: "AWS: CIDR & Subnetting",
+    question: "What are the three RFC 1918 private IP ranges?",
+    options: [
+      "10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16",
+      "10.0.0.0/8, 172.0.0.0/8, 192.168.0.0/24",
+      "10.0.0.0/16, 172.16.0.0/16, 192.168.0.0/16",
+      "10.0.0.0/8, 169.254.0.0/16, 192.168.0.0/16"
+    ],
+    answer: 0,
+    explanation: "RFC 1918 private ranges: 10.0.0.0/8 (16M addresses), 172.16.0.0/12 (covers 172.16.x.x–172.31.x.x, 1M addresses), 192.168.0.0/16 (65K addresses). These are non-routable on the public internet. AWS VPCs must use one of these ranges."
+  },
+  {
+    section: "AWS: CIDR & Subnetting",
+    question: "What is the 169.254.0.0/16 range, and where does it appear in AWS?",
+    options: [
+      "The AWS management network — used for internal AWS control plane traffic",
+      "Link-local (APIPA) — auto-assigned when DHCP fails; in AWS it's the instance metadata endpoint (169.254.169.254) and the VPC DNS resolver (169.254.169.253)",
+      "The default Docker bridge network range",
+      "A reserved range for future IPv4 allocation"
+    ],
+    answer: 1,
+    explanation: "169.254.0.0/16 is link-local (RFC 3927). Windows auto-assigns addresses here when DHCP fails (APIPA). In AWS: 169.254.169.254 is the IMDS endpoint (instance metadata, IAM credentials); 169.254.169.253 is the VPC DNS resolver (Route 53 Resolver). These are reachable from any EC2 instance without route table entries."
+  },
+  {
+    section: "AWS: CIDR & Subnetting",
+    question: "AWS reserves 5 IP addresses in every subnet. In a /28 subnet, how many IPs are actually usable?",
+    options: [
+      "9",
+      "11",
+      "14",
+      "16"
+    ],
+    answer: 1,
+    explanation: "A /28 has 2^4 = 16 total IPs. AWS reserves 5: network address (.0), VPC router (.1), DNS (.2), reserved for future use (.3), broadcast (.255-equivalent, last address). 16 − 5 = 11 usable. This is why /28 is the smallest AWS subnet — /29 (8 total, 3 usable) is too small for most use cases."
+  },
+  {
+    section: "AWS: CIDR & Subnetting",
+    question: "What are the valid CIDR block sizes for an AWS VPC?",
+    options: [
+      "/8 to /32",
+      "/16 to /28",
+      "/16 to /32",
+      "/8 to /28"
+    ],
+    answer: 1,
+    explanation: "AWS VPCs accept primary CIDR blocks from /16 (65,536 IPs) to /28 (16 IPs). You can add up to 4 secondary CIDR blocks of the same size range. Subnets must be /16–/28 and must fit within the VPC CIDR. Plan generously — changing a VPC CIDR is painful."
+  },
+  {
+    section: "AWS: CIDR & Subnetting",
+    question: "You're designing subnets for a 3-AZ VPC at 10.0.0.0/16. You want public, private, and DB tiers per AZ (9 subnets total) with room to grow. Which subnet size gives a good balance?",
+    options: [
+      "/28 per subnet — 11 usable IPs is plenty for most tiers",
+      "/24 per subnet — 254 hosts each, uses 9 of 256 available /24s, leaves ample space for new subnets",
+      "/16 per subnet — maximum hosts per subnet",
+      "/20 per subnet — but 9 × /20 subnets exceeds the /16 VPC space"
+    ],
+    answer: 1,
+    explanation: "/24 per subnet is the most common AWS pattern. 9 subnets × /24 = 9 of the 256 available /24 blocks in a /16, leaving 247 for future expansion. /20 would need 9 × 4096 IPs but a /16 only has 65536 total — math works (9×16=144 third-octet slots used of 256), but it's over-provisioned for most tiers. /28 is too small once AWS reserves 5 IPs."
+  },
+
   // ── Section 19: OAuth 2.0 & OIDC ──────────────────────────────────────────
   {
     section: "Section 19: OAuth 2.0 & OIDC",
@@ -3722,7 +3964,7 @@ const TOPIC_GROUPS = [
   { id: 'linux', label: 'Linux Fundamentals',
     topics: ['Section 1: The Magic Numbers','Section 2: The Memory Story','Section 3: Process Lifecycle','Section 4: Signals','Section 5: D-State / Load Average','Section 6: Files, FDs, Inodes','Section 7: DNS Resolution Path','Section 8: Advanced Linux SRE'] },
   { id: 'aws', label: 'Terraform & AWS',
-    topics: ['Section 10: Terraform','Section 11: IAM','Section 12: EC2','Section 13: ECS','Section 14: RDS','Section 15: The SRE Layer','AWS: Networking & VPC','AWS: Lambda & Serverless','AWS: S3 & Storage','AWS: Auto Scaling & High Availability','AWS: KMS & Security','AWS: CloudFormation'] },
+    topics: ['Section 10: Terraform','Section 11: IAM','Section 12: EC2','Section 13: ECS','Section 14: RDS','Section 15: The SRE Layer','AWS: Networking & VPC','AWS: Lambda & Serverless','AWS: S3 & Storage','AWS: Auto Scaling & High Availability','AWS: KMS & Security','AWS: CloudFormation','AWS: CIDR & Subnetting'] },
   { id: 'k8s', label: 'Containers & Kubernetes',
     topics: ['Section 16: Containers Under the Hood','Section 17: Kubernetes Core','Section 18: K8s Debugging Playbook'] },
   { id: 'identity', label: 'Identity & Security',
