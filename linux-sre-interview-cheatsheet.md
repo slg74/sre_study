@@ -101,7 +101,22 @@ Confirm: `ps -eLf | wc -l`, `ulimit -u`, `pids.current` in the cgroup, `ps aux |
 
 ---
 
-## 8. Kernel, One Breath
+## 8. Advanced Linux SRE — Senior-Filter Topics
+
+- **IPC and memory-bound workloads**: `perf stat` IPC < 0.5 on a CPU-bound process = memory-bandwidth bottleneck, not compute. CPU is stalling on cache misses. Confirm with `perf stat -e cache-misses,cache-references`. Fix: data locality, smaller working set, memory-optimized instance.
+- **Major vs minor page faults** (`sar -B`): *major* fault (pgmajflt) = page not in RAM → disk I/O required → milliseconds of latency per fault. *Minor* fault (pgminflt) = page in RAM but not mapped yet → cheap. Causes of majors: working set > RAM, swap usage, cold mmap.
+- **Dirty writeback tuning**: `vm.dirty_background_ratio` (soft, wakes background flusher, default 10%) vs `vm.dirty_ratio` (hard ceiling, causes synchronous write stall, default 20%). High `Dirty:` in `/proc/meminfo` + pegged kworker = writeback falling behind. Lower both for latency-sensitive DBs; raise for write-heavy batch.
+- **TIME_WAIT**: normal and harmless unless port exhaustion occurs. `tcp_fin_timeout` controls duration. `tcp_tw_reuse=1` safely allows reuse for outbound connections. `tcp_tw_recycle` is dangerous (breaks NAT, removed in 4.12) — never set it.
+- **`ss` for live sockets**: `ss -tp dst 10.0.1.50:5432` — faster than netstat (reads /proc directly), shows PID+process inline. Add `-n` to skip DNS. `-s` for summary counts per state.
+- **futex / strace diagnosis**: a process looping on `futex(FUTEX_WAIT)` is parked waiting on a mutex. If it never returns: high contention or deadlock (thread A waits for lock held by thread B, which waits for thread A). Debug with `gdb -p <pid>` thread bt or `perf lock`.
+- **cgroups v2 CPU throttling**: write `<quota> <period>` to `cpu.max`. `200000 100000` = 2 cores. `150000 100000` = 1.5 cores. v1 used separate `cpu.cfs_quota_us` / `cpu.cfs_period_us` files. `cpu.weight` (v2) / `cpu.shares` (v1) are relative — not hard limits.
+- **`oom_score_adj`**: range -1000 to +1000. -1000 = OOM killer will never choose this process. +1000 = first target. Kernel score = RSS + swap + adj. Always set sshd to -1000 (you need it to recover). OOMKill visible in `/var/log/kern.log` or `dmesg | grep -i oom`.
+- **System-wide tracing without restart**: `bpftrace -e 'tracepoint:syscalls:sys_enter_openat { printf("%s %s\n", comm, str(args->filename)); }'` — zero overhead, no process restart, attaches live. For audit-log use: `auditd` + `-a always,exit -F arch=b64 -S openat`. For path-specific watches: `inotifywait`.
+- **Load average decay**: load average is an exponential moving average (1/5/15 min). High 15-min with low current CPU + no D-state = decaying tail from a past spike. Correlate with `sar -q` for historical data. Always check CPU steal (`st%` in top) — hypervisor throttling shows as high steal with low user%.
+
+---
+
+## 9. Kernel, One Breath
 
 "The kernel manages hardware on behalf of user space — process scheduling, virtual memory, filesystems, networking, drivers. User space crosses into kernel space via syscalls, which is exactly what strace lets you watch."
 
@@ -146,6 +161,14 @@ Confirm: `ps -eLf | wc -l`, `ulimit -u`, `pids.current` in the cgroup, `ps aux |
 - **ECS — the big one**: **task execution role** = what the ECS *agent* uses (pull image from ECR, write CloudWatch logs, fetch secrets). **Task role** = what *your application* uses (S3, SQS, etc.). Mixing these up is a known senior-filter question.
 - **Debugging AccessDenied**: identify the principal (CloudTrail shows the denied call + which policy type denied), then walk the chain: identity policy → resource policy → SCP → permission boundary → condition keys (aws:SourceIp, aws:PrincipalOrgID...). Tools: CloudTrail, IAM Policy Simulator, Access Analyzer.
 - **Least privilege in practice**: start from Access Analyzer / CloudTrail-generated policies, scope resources with ARNs not `*`, use conditions.
+- **Permission boundary vs SCP**: boundary = caps what permissions *one identity* can be granted (attached to a specific user/role). SCP = caps what any identity in an *OU/account* can be granted. Effective permissions = identity policy ∩ permission boundary ∩ SCP — all three must allow it.
+- **Same-account vs cross-account S3 access**: same-account = identity policy OR bucket policy is sufficient. Cross-account = BOTH are required. Explicit Deny in either = denied everywhere.
+- **IRSA (EKS pod identity)**: trust policy uses the cluster's OIDC provider as Federated principal + `StringEquals` condition on `sub: system:serviceaccount:<ns>:<sa>`. Without the sub condition, any pod in the cluster can assume the role — critical security gap.
+- **`iam:PassRole` is a privilege escalation vector**: it lets a user attach a role to a service (EC2, Lambda, ECS). A low-priv user with PassRole on an admin role can launch a service that exercises admin permissions. Scope it: use `iam:PassedToService` condition.
+- **Inline vs managed policies**: managed = reusable, versionable (10 versions), searchable in Access Analyzer. Inline = embedded in the identity, can't be reused, invisible to `aws iam list-policies`. Use inline only when you need a strict 1:1 binding.
+- **MFA enforcement pattern**: `Effect: Deny, Action: *, Resource: *, Condition: {BoolIfExists: {aws:MultiFactorAuthPresent: false}}`. Denies everything when MFA is absent; BoolIfExists evaluates true when the key is missing.
+- **CloudTrail for auditing**: who (`userIdentity`), what (`eventName`), where (`sourceIPAddress`), when (`eventTime`). Query: Event History (90d console), Athena on S3 trail for older/complex. CloudWatch Logs Insights if you ship trail logs there. CloudTrail ≠ CloudWatch — trail is immutable API audit, Metrics are operational telemetry.
+- **Access Analyzer**: flags resources reachable by principals outside your zone of trust (account or org). Uses formal logical reasoning (Zelkova), not heuristics. External access isn't always wrong — archive findings that are intentional, fix the rest.
 
 ## 12. EC2
 
@@ -165,6 +188,16 @@ Confirm: `ps -eLf | wc -l`, `ulimit -u`, `pids.current` in the cgroup, `ps aux |
 - **Shutdown path** (ties to Linux Part 1): ECS sends **SIGTERM**, waits `stopTimeout` (default 30s), then **SIGKILL** → exit 137. No graceful handler = dropped requests every deploy.
 - **Debugging a task that won't run**: stuck PENDING → no capacity, subnet/ENI exhaustion, or can't pull image (execution role/ECR/NAT path). Crash-looping → check **stoppedReason** on the stopped task + CloudWatch logs; 137 = OOM or stopTimeout kill; **ECS Exec** to shell into a live task.
 - **Networking**: awsvpc mode = each task gets its own ENI/SG → ALB targets are task IPs; health check failures usually = SG between ALB and task, wrong port, or app slow to start (tune healthCheckGracePeriod).
+- **Task-level vs container-level resources**: task-level = Fargate allocation you pay for. Container-level = scheduling hints and soft OOM limits within that. `memory` (hard, OOM kill) vs `memoryReservation` (soft, guaranteed minimum). Container hard limits must not exceed task total.
+- **`essential: true`**: when any essential container stops (crash or clean exit), ECS stops the entire task. Mark critical sidecars (log routers, Envoy) essential. Use `dependsOn` for startup ordering (START/COMPLETE/HEALTHY conditions).
+- **Deploy stuck at N-1**: check `(desired × maxPercent/100) − running` for placement headroom. `minimumHealthyPercent=100, maximumPercent=100` means zero headroom — must drain before placing. Add capacity or lower minimumHealthyPercent temporarily.
+- **Service Connect vs ALB**: Service Connect = east-west (service-to-service), client-side load balancing, built-in metrics, no extra hop. ALB = north-south (internet-facing ingress) or explicit internal routing with a VIP. Use Service Connect for inter-service calls inside a cluster.
+- **Ephemeral volumes for inter-container sharing**: define a volume with no `host` path in `volumes` block, mount it in each container's `mountPoints`. Shared in-task, destroyed when task stops. EFS for cross-task persistence.
+- **`CannotPullContainerError` — three causes**: (1) no network path to ECR (missing NAT gateway or VPC endpoint for ecr.api, ecr.dkr, s3); (2) execution role missing `ecr:GetAuthorizationToken` or `ecr:BatchGetImage`; (3) image tag doesn't exist in the repo.
+- **FARGATE_SPOT**: ~70% cheaper, interruptible. 2-minute SIGTERM warning before reclamation. Design for it: graceful SIGTERM handlers, checkpointing, idempotent work. Mix with FARGATE in a capacity provider strategy using weights.
+- **Secrets injection**: `secrets` block in containerDefinitions references Secrets Manager or SSM ARN. Execution role fetches at task start and injects as env var — never appears in task definition JSON. Execution role needs `secretsmanager:GetSecretValue` or `ssm:GetParameters`.
+- **Blue/Green vs rolling**: Blue/Green (CodeDeploy) = two target groups, instant traffic cutover, instant rollback (one API call), keeps blue live for rollback window. Rolling = in-place batch replacement, rollback requires a new deploy of the old version. Blue/Green costs double capacity briefly but gives a clean escape hatch.
+- **`healthCheckGracePeriod = 0`**: ALB checks fire immediately on task start. If app takes 15s to initialize, it fails health checks and gets replaced in a restart loop. Set grace period > cold-start time.
 
 ## 14. RDS
 
@@ -174,7 +207,12 @@ Confirm: `ps -eLf | wc -l`, `ulimit -u`, `pids.current` in the cgroup, `ps aux |
 - **Connections**: max_connections scales with instance memory; connection storms from Lambda/ECS scale-outs → **RDS Proxy** (or PgBouncer) for pooling. Queued connections present as latency spikes with no errors (Round 2, Q12).
 - **Storage perf**: gp2 **BurstBalance** hitting zero = the classic "DB suddenly slow, CPU idle" page (DiskQueueDepth climbs, read latency jumps). Fix: gp3/provisioned IOPS (online change). Long-term: alert on BurstBalance.
 - **Monitoring set**: CPUUtilization, DatabaseConnections, Read/WriteLatency, DiskQueueDepth, FreeableMemory, FreeStorageSpace, ReplicaLag + **Performance Insights** for top waits/queries.
-- **Aurora** (one breath): shared distributed storage across 3 AZs, replicas share storage so lag is tiny, failover faster, reader/writer endpoints.
+- **Aurora** (one breath): shared distributed storage across 3 AZs, replicas share storage so lag is tiny (~sub-10ms — no data to ship, just cache invalidations), failover faster (~30s vs 60-120s), reader/writer endpoints.
+- **Multi-AZ failover mechanics**: standby is promoted → DNS CNAME of the existing endpoint flips to standby. App reconnects to the same hostname — no endpoint change needed. Existing connections drop; app needs retry logic + short DNS TTL. Multi-AZ standby serves ZERO traffic (not a read replica).
+- **Cross-region DR**: cross-region read replicas — async replication to another region, manually promotable. Automated backups stay in-region unless explicitly copied. Multi-AZ is intra-region only.
+- **PITR restore**: always creates a NEW instance with a NEW endpoint. Never modifies the source. Validate data, then update connection string or do a blue/green cutover.
+- **Connection-pool queuing vs refusal**: queuing = latency spikes, error rate stays flat (requests eventually served). Refusal (max_connections hit) = immediate errors. The latency-without-errors signature is the tell.
+- **Default parameter group**: read-only — clone it to a custom group, modify there, attach to instance. Static params = pending-reboot state until you explicitly reboot.
 
 ## 15. The SRE Layer (rest of the colleague's list, condensed)
 

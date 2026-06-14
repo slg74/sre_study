@@ -851,6 +851,128 @@ const ALL_QUESTIONS = [
     explanation: "systemd-resolved listens on 127.0.0.53 as a stub resolver. /etc/resolv.conf typically points here. It handles caching, DNSSEC, and per-link DNS configuration."
   },
 
+  // ── Section 8: Advanced Linux SRE ────────────────────────────────────────
+  {
+    section: "Section 8: Advanced Linux SRE",
+    question: "`perf stat` shows high instructions-retired but IPC of 0.4 on a CPU-bound process. What does a sub-0.5 IPC tell you?",
+    options: [
+      "The process is compute-bound and needs a faster CPU",
+      "The CPU is stalling waiting for memory — cache misses are the bottleneck, not computation",
+      "There is a branch misprediction storm caused by bad compiler optimization",
+      "The process is hyperthreading-starved and should be pinned to physical cores"
+    ],
+    answer: 1,
+    explanation: "IPC (instructions per cycle) < 0.5 means the CPU is spending most of its time stalled — classic memory-bandwidth bottleneck. A compute-bound workload runs at IPC > 2. Use `perf stat -e cache-misses,cache-references` to confirm. Fix: improve data locality, reduce working set, or move to a memory-optimized instance."
+  },
+  {
+    section: "Section 8: Advanced Linux SRE",
+    question: "`sar -B` shows `pgmajflt/s` spiking to 500. What is happening and why does it hurt?",
+    options: [
+      "Minor page faults — anonymous memory is being mapped but the data is already in RAM",
+      "Major page faults — the kernel must read the page from disk (swap or mmap'd file) before the process can continue",
+      "The TLB is being flushed due to a context switch storm",
+      "Huge page compaction is failing and falling back to 4KB pages"
+    ],
+    answer: 1,
+    explanation: "Major page faults (pgmajflt) require disk I/O — the page is not in RAM. Each fault adds milliseconds of latency and blocks the faulting thread. Causes: working set larger than RAM (swap), cold start of mmap'd files, or heap too large. Minor faults (pgminflt) are cheap — page exists in RAM, just not mapped in the page table yet."
+  },
+  {
+    section: "Section 8: Advanced Linux SRE",
+    question: "`/proc/meminfo` shows `Dirty` growing to 8 GB and kworker flush threads are pegged. What controls when the kernel forces writeback?",
+    options: [
+      "vm.swappiness — lower it to force writeback before swapping",
+      "vm.dirty_ratio (hard ceiling, triggers synchronous write) and vm.dirty_background_ratio (soft target, wakes background flusher)",
+      "fs.file-max — when the dirty page file descriptor limit is hit",
+      "vm.vfs_cache_pressure — controls how aggressively the kernel reclaims page cache"
+    ],
+    answer: 1,
+    explanation: "vm.dirty_background_ratio (default 10%): when dirty pages exceed this % of RAM, pdflush/kworker wakes up. vm.dirty_ratio (default 20%): when dirty pages hit this, ALL writes block until flushed — latency spike. For latency-sensitive workloads lower both. For write-heavy batch workloads raise them. Monitor with `sar -B` and `/proc/meminfo Dirty:`."
+  },
+  {
+    section: "Section 8: Advanced Linux SRE",
+    question: "`ss -s` shows 80,000 sockets in TIME_WAIT. Is this a problem, and which two kernel params most directly affect it?",
+    options: [
+      "Yes, always — TIME_WAIT sockets exhaust port space and you must set tcp_tw_recycle=1",
+      "Not necessarily — TIME_WAIT is harmless unless port exhaustion occurs. Control duration with tcp_fin_timeout; enable tcp_tw_reuse (not recycle) for outbound reuse",
+      "Only a problem on the server side — clients are never affected by TIME_WAIT",
+      "Reduce it by lowering net.ipv4.ip_local_port_range to shrink the ephemeral pool"
+    ],
+    answer: 1,
+    explanation: "TIME_WAIT holds sockets for 2×MSL to prevent stale packets. 80k is fine unless you're exhausting the local port range (check `ss -s` vs ip_local_port_range). tcp_fin_timeout shortens the wait. tcp_tw_reuse allows reuse for outgoing connections safely. tcp_tw_recycle is dangerous (breaks NAT) and removed in Linux 4.12."
+  },
+  {
+    section: "Section 8: Advanced Linux SRE",
+    question: "You need to find which process is actively sending traffic to 10.0.1.50:5432 right now. What is the fastest command?",
+    options: [
+      "netstat -anp | grep 5432",
+      "ss -tp dst 10.0.1.50:5432",
+      "lsof -i TCP:5432",
+      "tcpdump -n host 10.0.1.50 and port 5432"
+    ],
+    answer: 1,
+    explanation: "`ss -tp dst 10.0.1.50:5432` — `-t` TCP, `-p` show process, `dst` filters destination. Faster than netstat (reads /proc directly, no DNS resolution). Output includes the PID and process name inline. `lsof -i` also works but is slower on large FD tables."
+  },
+  {
+    section: "Section 8: Advanced Linux SRE",
+    question: "`strace -p <pid>` shows the process looping on `futex(0x…, FUTEX_WAIT, 2, …)` without making progress. What is most likely happening?",
+    options: [
+      "The process is in a tight CPU spin-loop and strace is misreporting it as a futex call",
+      "The process is blocked waiting on a mutex held by another thread — either lock contention or a deadlock",
+      "The process is waiting for a network socket that has no data",
+      "The futex address is unmapped memory, causing the kernel to return EFAULT repeatedly"
+    ],
+    answer: 1,
+    explanation: "FUTEX_WAIT means the thread is parked waiting for the mutex owner to call FUTEX_WAKE. If it never returns, either: (a) high contention — check which thread holds the lock with `gdb -p <pid>`, or (b) deadlock — thread A holds lock 1 waiting for lock 2, thread B holds lock 2 waiting for lock 1. Use `pthread_mutex_trylock` analysis or `rr` (Mozilla record-and-replay) to diagnose."
+  },
+  {
+    section: "Section 8: Advanced Linux SRE",
+    question: "You want to limit a process to 1.5 CPU cores using cgroups v2 directly (no Docker). Which file do you write and with what value?",
+    options: [
+      "cpu.shares = 1500 (relative weight out of 1024)",
+      "cpu.max — write '150000 100000' (150ms quota per 100ms period = 1.5 CPUs)",
+      "cpu.cfs_quota_us = 150000 alongside cpu.cfs_period_us = 100000 in separate files",
+      "cpuset.cpus = 0-1 to allow two physical cores"
+    ],
+    answer: 1,
+    explanation: "cgroups v2 uses a single `cpu.max` file: `<quota> <period>`. '150000 100000' = 150ms of CPU per 100ms window = 1.5 cores. In v1, quota and period were separate files (cpu.cfs_quota_us, cpu.cfs_period_us). cpuset.cpus pins to specific cores but doesn't throttle. cpu.shares (v1) / cpu.weight (v2) are relative weights, not hard limits."
+  },
+  {
+    section: "Section 8: Advanced Linux SRE",
+    question: "A process has `oom_score_adj` set to -1000. What is the effect, and when would you set this?",
+    options: [
+      "The process is the first target for OOM kill — used for low-priority background jobs",
+      "The OOM killer will never kill this process — used for critical daemons (sshd, systemd, critical monitors)",
+      "The process OOM score is halved — used to deprioritize without fully protecting it",
+      "The kernel raises the process's RLIMIT_AS to avoid OOM conditions"
+    ],
+    answer: 1,
+    explanation: "oom_score_adj ranges from -1000 to +1000. -1000 = immune to OOM kill. The kernel's OOM score combines RSS, swap usage, and oom_score_adj; highest score is killed first. Set -1000 only for critical infrastructure (sshd lets you recover, systemd keeps the system alive). Setting sshd to -1000 is standard practice on production hosts."
+  },
+  {
+    section: "Section 8: Advanced Linux SRE",
+    question: "You need to trace all `open()` syscalls made by any process on the system for 10 seconds without restarting anything. Best tool?",
+    options: [
+      "strace -f -e open -p 1  (trace from init downward)",
+      "A BPF/eBPF program via bpftrace: `bpftrace -e 'tracepoint:syscalls:sys_enter_openat { printf(\"%s %s\\n\", comm, str(args->filename)); }'`",
+      "auditd with `-a always,exit -F arch=b64 -S open` rule",
+      "inotifywait -m -r / --event open"
+    ],
+    answer: 1,
+    explanation: "bpftrace attaches directly to the openat tracepoint with near-zero overhead — no process restart, works system-wide, outputs comm+filename in real time. auditd works but produces high-volume logs requiring post-processing. strace on PID 1 misses processes not descended from it. inotifywait watches filesystem events, not the syscall layer."
+  },
+  {
+    section: "Section 8: Advanced Linux SRE",
+    question: "A host's `load average` is 32 on a 16-core machine, but `top` shows all CPUs at ~5% and no D-state processes. What explains elevated load with low CPU?",
+    options: [
+      "Load average includes runnable threads, so 32 threads ready to run explains it even with low per-CPU %",
+      "The load average counter is stale — it decays over 1, 5, 15 minutes and reflects a past spike, not current state",
+      "NTP is skewing the load average calculation by altering kernel tick accounting",
+      "CPU steal (st%) is high, meaning hypervisor is throttling the instance but `top` shows host-side CPU only"
+    ],
+    answer: 1,
+    explanation: "Load average uses an exponential moving average (1/5/15 min). A spike 8 minutes ago still heavily influences the 15-minute number. If current CPU is low and no D-state processes exist, you're watching a decaying tail. Correlate with `sar -q` for historical load or check `uptime` timestamp. Also valid: CPU steal (st%) — check `top` steal column before concluding."
+  },
+
   // ── Section 10: Terraform ─────────────────────────────────────────────────
   {
     section: "Section 10: Terraform",
@@ -1047,6 +1169,127 @@ const ALL_QUESTIONS = [
     explanation: "IMDSv1: any GET to 169.254.169.254 from anywhere — SSRF in a web app could steal the instance role credentials. IMDSv2 requires a PUT-based session token first (hop-limit=1 prevents forwarded requests from fetching it)."
   },
 
+  {
+    section: "Section 11: IAM",
+    question: "What is the difference between an IAM permission boundary and an SCP?",
+    options: [
+      "They are the same thing — SCPs are just permission boundaries applied at the account level",
+      "Permission boundary caps what permissions an individual IAM identity can be granted; SCP caps what any identity in an OU/account can be granted",
+      "SCPs apply to roles only; permission boundaries apply to users only",
+      "Permission boundaries allow cross-account access; SCPs restrict it"
+    ],
+    answer: 1,
+    explanation: "Permission boundary: attached to a specific IAM user or role — it's a ceiling on their effective permissions even if their policy grants more. SCP: attached to an AWS Organization OU or account — applies to every principal in that scope. Both are 'guardrails', but at different scopes. Effective permissions = intersection of identity policy ∩ permission boundary ∩ SCP."
+  },
+  {
+    section: "Section 11: IAM",
+    question: "A developer has `s3:*` on resource `*` in their identity policy but gets AccessDenied on `s3:GetObject`. What should you check?",
+    options: [
+      "The developer's MFA device — s3:GetObject requires MFA by default",
+      "The S3 bucket policy for an explicit Deny, and whether an SCP is blocking S3 access in this account",
+      "Whether the bucket is in a different region — cross-region S3 access requires separate permissions",
+      "The developer's session token expiry — temporary credentials block S3 by default"
+    ],
+    answer: 1,
+    explanation: "An explicit Deny anywhere in the evaluation chain overrides any Allow. Check: (1) S3 bucket policy — does it have an explicit Deny for this principal or condition? (2) SCP — is s3:GetObject blocked at the OU level? (3) Permission boundary — does the developer's role have one that excludes S3? Identity policy alone is not enough if any of these deny it."
+  },
+  {
+    section: "Section 11: IAM",
+    question: "What is `sts:AssumeRoleWithWebIdentity` and when does it replace `sts:AssumeRole`?",
+    options: [
+      "It's the same as AssumeRole but for web console access instead of API access",
+      "It exchanges an OIDC/JWT token (from a web identity provider like Kubernetes, Google, GitHub) for temporary AWS credentials — used for IRSA, GitHub Actions OIDC, EKS pod identity",
+      "It allows assuming roles across AWS partitions (GovCloud ↔ commercial)",
+      "It's a legacy API replaced by AssumeRole in all modern SDKs"
+    ],
+    answer: 1,
+    explanation: "AssumeRoleWithWebIdentity lets external OIDC providers (Kubernetes, GitHub Actions, Cognito, Google) federate into AWS without IAM users. The caller presents a JWT; STS validates the token against the registered OIDC provider and issues short-lived credentials. This is the foundation of IRSA (IAM Roles for Service Accounts) in EKS."
+  },
+  {
+    section: "Section 11: IAM",
+    question: "You're setting up IRSA for an EKS pod. What must the IAM role's trust policy `Principal` and `Condition` reference?",
+    options: [
+      "Principal: eks.amazonaws.com; Condition: the cluster ARN",
+      "Principal: the OIDC provider URL (as a Federated principal); Condition: sub matching the service account ARN (`system:serviceaccount:<ns>:<sa>`)",
+      "Principal: the node instance role; Condition: the pod's namespace label",
+      "Principal: sts.amazonaws.com; Condition: the pod's IP address"
+    ],
+    answer: 1,
+    explanation: "IRSA trust policy: Principal is the OIDC provider ARN (`oidc.eks.<region>.amazonaws.com/id/<hash>`), type Federated. Condition has `StringEquals` on `sub` = `system:serviceaccount:<namespace>:<serviceaccount-name>` and `aud` = `sts.amazonaws.com`. Without the sub condition, any pod in the cluster could assume the role."
+  },
+  {
+    section: "Section 11: IAM",
+    question: "Your Lambda function (same account as the S3 bucket) has `s3:PutObject` in its execution role. The bucket policy has no statement mentioning the Lambda role. Does the PutObject succeed?",
+    options: [
+      "No — S3 always requires an explicit Allow in the bucket policy regardless of account",
+      "Yes — for same-account access, an Allow in the identity policy alone is sufficient; a bucket policy is only required for cross-account",
+      "Only if the bucket has ACLs disabled",
+      "Only if the Lambda is in the same VPC as the S3 endpoint"
+    ],
+    answer: 1,
+    explanation: "Same-account rule: access is granted if EITHER the identity policy OR the resource policy allows it (and neither explicitly denies). Cross-account rule: BOTH the identity policy AND the resource policy must allow it. So a Lambda with s3:PutObject and no bucket policy works same-account, but fails cross-account without an explicit bucket policy grant."
+  },
+  {
+    section: "Section 11: IAM",
+    question: "Why is `iam:PassRole` considered a privilege escalation vector, and how do you mitigate it?",
+    options: [
+      "PassRole lets a user create new IAM roles — restrict it to prevent role proliferation",
+      "PassRole lets a user attach an IAM role to a service (EC2, Lambda, ECS) — a user with PassRole on an admin role can launch a service that has admin access even if the user doesn't",
+      "PassRole bypasses permission boundaries — always pair it with a Deny on iam:CreateRole",
+      "PassRole is only dangerous in cross-account scenarios — same-account use is safe"
+    ],
+    answer: 1,
+    explanation: "Without PassRole, you can't attach a role to a service. But with unrestricted PassRole, a low-privilege user can say 'launch this EC2 with the admin role' and then use that EC2 to do anything. Mitigate: scope PassRole with a condition — `iam:PassedToService` and `iam:AssociatedResourceArn` to restrict which roles can be passed to which services."
+  },
+  {
+    section: "Section 11: IAM",
+    question: "Why are inline policies generally discouraged in favor of managed policies?",
+    options: [
+      "Inline policies have a smaller size limit than managed policies",
+      "Inline policies can't be reused across identities, can't be versioned independently, and are harder to audit — they're embedded in the identity and invisible in policy searches",
+      "Inline policies don't support IAM conditions",
+      "AWS charges extra for inline policy evaluations"
+    ],
+    answer: 1,
+    explanation: "Managed policies are reusable, versionable (10 versions retained), and visible in `aws iam list-policies`. Inline policies live inside the identity — you can't search them across accounts with Access Analyzer, can't attach to multiple principals, and rollback requires rewriting the entire inline block. Use inline only when you need a strict 1:1 identity-to-policy binding that must not be accidentally reused."
+  },
+  {
+    section: "Section 11: IAM",
+    question: "How do you audit which IAM principal made a specific API call (e.g., DeleteSecurityGroup) last Tuesday?",
+    options: [
+      "CloudWatch Metrics — filter by the API name in the EC2 namespace",
+      "CloudTrail — query the event history or an Athena table on the S3 trail bucket, filtering on eventName and eventTime",
+      "VPC Flow Logs — they record all API calls with the source IAM principal",
+      "AWS Config — it records all API calls in its configuration history"
+    ],
+    answer: 1,
+    explanation: "CloudTrail logs every AWS API call: who (userIdentity), what (eventName), where (sourceIPAddress), when (eventTime). Query via: (1) CloudTrail Event History (90 days, console/CLI), (2) Athena on the S3 trail for older events or complex queries, (3) CloudWatch Logs Insights if you ship trail logs there. VPC Flow Logs capture network traffic, not API calls."
+  },
+  {
+    section: "Section 11: IAM",
+    question: "A role policy has: Effect Deny, Action `*`, Resource `*`, Condition `BoolIfExists: {aws:MultiFactorAuthPresent: false}`. What does this do?",
+    options: [
+      "Denies all actions when MFA is present — effectively locking out MFA users",
+      "Denies all actions when MFA is NOT present — forces MFA before any action is allowed",
+      "Denies all actions unconditionally because `BoolIfExists` always evaluates to true",
+      "Has no effect — Deny with a Condition is ignored in IAM evaluation"
+    ],
+    answer: 1,
+    explanation: "BoolIfExists evaluates as false (not triggering the Deny) when the key is present and true, and as true (triggering the Deny) when the key is absent or false. Result: if aws:MultiFactorAuthPresent is false or missing, ALL actions are denied. This is the standard MFA enforcement pattern. Users must authenticate with MFA to get the key set to true and unblock themselves."
+  },
+  {
+    section: "Section 11: IAM",
+    question: "AWS IAM Access Analyzer flags an S3 bucket as having external access. What does this mean, and what should you check?",
+    options: [
+      "The bucket is publicly accessible via the internet — immediately make it private",
+      "The bucket policy or ACL grants access to a principal outside your AWS Organization — could be intentional (partner) or a misconfiguration to investigate",
+      "The bucket's KMS key is accessible cross-account — rotate it immediately",
+      "The bucket has S3 Transfer Acceleration enabled, which exposes it to the public CDN"
+    ],
+    answer: 1,
+    explanation: "Access Analyzer flags any resource reachable by a principal outside the zone of trust (your account or org). External access isn't always wrong — a bucket shared with a partner is intentional. The workflow: review the finding, confirm or archive it (mark intended), or fix the policy. Access Analyzer uses formal logical reasoning (Zelkova) to prove reachability, not heuristics."
+  },
+
   // ── Section 12: EC2 ───────────────────────────────────────────────────────
   {
     section: "Section 12: EC2",
@@ -1121,6 +1364,127 @@ const ALL_QUESTIONS = [
     ],
     answer: 1,
     explanation: "In awsvpc mode each task has its own ENI + SG. The task's SG must allow inbound from the ALB's SG on the container port. Also check healthCheckGracePeriod if the app is slow to start (prevents premature health check failures)."
+  },
+
+  {
+    section: "Section 13: ECS",
+    question: "What is the difference between task-level CPU/memory and container-level CPU/memory in a Fargate task definition?",
+    options: [
+      "They are the same — container and task values must always match",
+      "Task-level sets the hard Fargate allocation (what you pay for); container-level is a further subdivision within that allocation for scheduling priority and soft limits",
+      "Container-level CPU is in MHz; task-level CPU is in vCPUs",
+      "Task-level is optional; container-level is the only value Fargate actually enforces"
+    ],
+    answer: 1,
+    explanation: "Fargate allocates and bills at task-level (e.g., 1 vCPU, 2 GB). Container-level cpu/memory sets scheduling hints and soft limits within that envelope. Container memory hard limits (memoryReservation vs memory) control OOM behavior per container. The sum of container hard limits should not exceed the task total."
+  },
+  {
+    section: "Section 13: ECS",
+    question: "You have a main app container and a log-router sidecar. The sidecar crashes but the main container keeps running and the task stays RUNNING. How do you fix this?",
+    options: [
+      "Set dependsOn with condition HEALTHY on the sidecar",
+      "Mark the sidecar container as `essential: true` — any essential container stopping causes ECS to stop the entire task",
+      "Set the sidecar's restartPolicy to ALWAYS",
+      "Enable ECS container health checks on the sidecar"
+    ],
+    answer: 1,
+    explanation: "By default, non-essential containers can die without affecting the task. Mark critical sidecars (log routers, service mesh proxies) as `essential: true`. When any essential container exits (for any reason), ECS sends SIGTERM to all containers and stops the task. Use `dependsOn` with START/COMPLETE/HEALTHY conditions to control startup ordering."
+  },
+  {
+    section: "Section 13: ECS",
+    question: "An ECS rolling deploy is stuck: the service shows 2 running, 1 pending, 0 draining, desired=3. What is likely blocking new task placement?",
+    options: [
+      "The new task definition has a syntax error in the container definition",
+      "minimumHealthyPercent and maximumPercent settings prevent placing the third task without first draining an old one — no capacity headroom",
+      "The ALB target group has no healthy targets to pass health checks",
+      "The ECS service's IAM role lacks ecs:RunTask permission"
+    ],
+    answer: 1,
+    explanation: "Deploy math: minimumHealthyPercent=100, maximumPercent=200 means ECS can run up to 6 tasks (200% of 3) during deploy. But minimumHealthyPercent=100, maximumPercent=100 means no extra tasks can run — ECS must drain one before placing a replacement. If you're stuck, check `(desired × maxPercent/100) - running` — that's your placement headroom."
+  },
+  {
+    section: "Section 13: ECS",
+    question: "How does ECS Service Connect differ from putting all inter-service traffic through an ALB?",
+    options: [
+      "Service Connect is for internal VPC traffic only; ALB is required for any cross-AZ communication",
+      "Service Connect provides east-west service discovery with client-side load balancing and built-in observability; ALB is designed for north-south (internet-facing) ingress",
+      "ALB supports HTTP/2 and gRPC; Service Connect only supports HTTP/1.1",
+      "Service Connect requires App Mesh; ALB works standalone"
+    ],
+    answer: 1,
+    explanation: "Service Connect injects an Envoy proxy into each task, provides DNS-based service discovery, client-side load balancing, and per-connection metrics — all without an ALB. Ideal for east-west (service-to-service) calls inside a cluster. ALB works well for north-south (external → service) and can also do internal routing, but adds a hop and cost for internal traffic."
+  },
+  {
+    section: "Section 13: ECS",
+    question: "Two containers in the same Fargate task need to share data via a local volume. What volume type do you define?",
+    options: [
+      "An EFS volume — required for all inter-container data sharing in Fargate",
+      "A bind mount (ephemeral volume defined in the task definition with no host path) — containers in the same task share it automatically",
+      "An S3-backed volume using the Mountpoint driver",
+      "A Docker named volume using the local driver"
+    ],
+    answer: 1,
+    explanation: "Ephemeral (bind mount) volumes in a task definition are shared across all containers in that task — no EFS required. Define the volume in the `volumes` block with no `host` path, then reference it in each container's `mountPoints`. EFS is for data that must persist beyond task lifetime or be shared across multiple tasks."
+  },
+  {
+    section: "Section 13: ECS",
+    question: "Name three distinct causes of `CannotPullContainerError` in ECS.",
+    options: [
+      "Wrong task definition revision, incorrect container port, and missing IAM user",
+      "No NAT gateway / VPC endpoint for ECR, execution role missing ecr:GetAuthorizationToken, and image tag not found in the repository",
+      "Task memory limit too low, wrong cluster region, and ALB misconfiguration",
+      "Missing ECS agent, stopped cluster, and invalid subnets"
+    ],
+    answer: 1,
+    explanation: "Three main causes: (1) Network path missing — Fargate needs internet (NAT gateway) or VPC endpoints (ecr.api, ecr.dkr, s3) to reach ECR. (2) Execution role — missing ecr:GetAuthorizationToken or ecr:BatchGetImage on the task execution role. (3) Image doesn't exist — wrong tag, wrong region registry, or the image was deleted. Check stoppedReason and ECS events for the exact error."
+  },
+  {
+    section: "Section 13: ECS",
+    question: "What is the key trade-off between FARGATE and FARGATE_SPOT capacity providers?",
+    options: [
+      "FARGATE_SPOT uses older hardware and has lower network throughput limits",
+      "FARGATE_SPOT is ~70% cheaper but can be interrupted with a 2-minute SIGTERM warning — suitable for fault-tolerant batch, not for stateful or latency-sensitive workloads",
+      "FARGATE_SPOT requires Spot Fleet configuration and is not available in all regions",
+      "FARGATE_SPOT tasks cannot use EFS volumes or Secrets Manager"
+    ],
+    answer: 1,
+    explanation: "Fargate Spot uses spare AWS capacity. When AWS reclaims it, your task gets a SIGTERM and 2 minutes to drain. Design for it: graceful SIGTERM handlers, checkpointing, idempotent work. Mix FARGATE (base) and FARGATE_SPOT (burst) with a capacity provider strategy and weights to control cost vs reliability."
+  },
+  {
+    section: "Section 13: ECS",
+    question: "How do you pass a secret (e.g., DB password) to an ECS container at runtime without it appearing in the task definition as plaintext?",
+    options: [
+      "Base64-encode the value in the environment variable — ECS automatically decodes secrets",
+      "Use the `secrets` block in the task definition referencing a Secrets Manager ARN or SSM Parameter Store ARN — the execution role fetches and injects the value at task start",
+      "Store the value in an S3 object and have the container download it on startup",
+      "Use Docker build-args to bake the secret into the image layer"
+    ],
+    answer: 1,
+    explanation: "The `secrets` block in containerDefinitions: `{name: 'DB_PASS', valueFrom: 'arn:aws:secretsmanager:…'}`. At task launch, the ECS agent (using the execution role) fetches the value and injects it as an environment variable. The value never appears in the task definition JSON. Execution role needs secretsmanager:GetSecretValue or ssm:GetParameters."
+  },
+  {
+    section: "Section 13: ECS",
+    question: "ECS Blue/Green (CodeDeploy) vs rolling update — what is the key operational difference?",
+    options: [
+      "Blue/Green is only available with EC2 launch type; rolling works with both EC2 and Fargate",
+      "Blue/Green maintains two complete target groups with instant traffic cutover and instant rollback; rolling replaces tasks in-place — rollback requires another full deploy",
+      "Rolling updates support canary traffic shifting; Blue/Green does not",
+      "Blue/Green requires a separate ECS cluster for the green environment"
+    ],
+    answer: 1,
+    explanation: "Blue/Green: CodeDeploy creates a new (green) target group, shifts traffic (canary → linear → all-at-once), keeps blue live for the rollback window. Rollback is one API call, instant. Rolling: ECS replaces tasks in batches — if you detect a problem after 50% rollout, you must deploy the previous version to get back. Blue/Green costs more (double capacity briefly) but gives you a clean escape hatch."
+  },
+  {
+    section: "Section 13: ECS",
+    question: "Your ECS service has `healthCheckGracePeriod` set to 0. The service keeps killing and restarting perfectly healthy tasks. What is happening?",
+    options: [
+      "The task execution role is missing, causing tasks to fail authentication immediately",
+      "The ALB health checks fire before the app finishes starting — tasks fail health checks and ECS deregisters/replaces them before they're ready",
+      "The task's SIGTERM handler is not implemented, causing tasks to exit on startup",
+      "The service's desired count is 0 — set it to the correct value"
+    ],
+    answer: 1,
+    explanation: "healthCheckGracePeriod delays ECS from acting on ALB/NLB health check failures after task startup. With 0 grace period, the ALB checks immediately — if your app takes 15 seconds to initialize, it fails health checks and gets replaced in a restart loop. Set grace period to slightly longer than your app's cold-start time. Also check the ALB health check threshold (consecutive failures required)."
   },
 
   // ── Section 14: RDS ───────────────────────────────────────────────────────
@@ -3356,7 +3720,7 @@ function restartQuiz() {
 // Topic groups for section filtering
 const TOPIC_GROUPS = [
   { id: 'linux', label: 'Linux Fundamentals',
-    topics: ['Section 1: The Magic Numbers','Section 2: The Memory Story','Section 3: Process Lifecycle','Section 4: Signals','Section 5: D-State / Load Average','Section 6: Files, FDs, Inodes','Section 7: DNS Resolution Path'] },
+    topics: ['Section 1: The Magic Numbers','Section 2: The Memory Story','Section 3: Process Lifecycle','Section 4: Signals','Section 5: D-State / Load Average','Section 6: Files, FDs, Inodes','Section 7: DNS Resolution Path','Section 8: Advanced Linux SRE'] },
   { id: 'aws', label: 'Terraform & AWS',
     topics: ['Section 10: Terraform','Section 11: IAM','Section 12: EC2','Section 13: ECS','Section 14: RDS','Section 15: The SRE Layer','AWS: Networking & VPC','AWS: Lambda & Serverless','AWS: S3 & Storage','AWS: Auto Scaling & High Availability','AWS: KMS & Security','AWS: CloudFormation'] },
   { id: 'k8s', label: 'Containers & Kubernetes',
