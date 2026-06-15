@@ -11,3 +11,9 @@ will reap it when it eventually exits.
 zombie - the child died and is waiting to be collected. 
 
 orphan - the parent died and the living child got re-homed. 
+
+on call should rotate weekly
+8 engineers means each person is on call roughly 1 week per 8 weeks. 
+less than 25% of engineer time should be spent on active incidents
+if higher, team needs more people or fewer paging issues
+pages shouldn't exceedd 2 per 12 hour shift on average
