@@ -3992,6 +3992,248 @@ const ALL_QUESTIONS = [
     ],
     answer: 2,
     explanation: "Error budget = 1 − SLO target. At 99.9%: 43.2 min/month. After 30-min incident: 13.2 min remains. The SRE error budget framework: spend budget on risky changes during high-budget periods; protect budget when low. With 13.2 min left and a risky migration: fast rollback (< 5 min) = acceptable risk, deploy. Slow rollback (> 13.2 min) = could breach SLO, negotiate delay or reduce risk (shadow test, canary). Error budget gives SREs a quantitative basis to push back on product teams — not 'no because risky,' but 'no because 13.2 minutes of budget cannot absorb a 20-minute rollback.'"
+  },
+
+  // ── NinjaOne: Senior SRE ──────────────────────────────────────────────────
+  {
+    section: "NinjaOne: Senior SRE",
+    question: "NinjaOne is a multi-tenant SaaS RMM platform. A single noisy tenant is generating 10× normal API traffic, causing p99 latency to spike for all other tenants. What is the first control you apply and why?",
+    options: [
+      "Immediately terminate the tenant's session to protect other customers — SLA compliance is top priority",
+      "Apply per-tenant rate limiting at the API gateway layer to throttle the noisy tenant to a fair-use ceiling, isolating blast radius without terminating service. Alert the tenant and investigate the cause (runaway automation, misconfigured script, or attack)",
+      "Add more API servers to absorb the extra load — horizontal scaling is always the right answer for traffic spikes",
+      "Move the noisy tenant to a dedicated database shard and let them consume all the resources they want"
+    ],
+    answer: 1,
+    explanation: "Multi-tenant SaaS SRE principle: one tenant's misbehavior must not degrade others (the 'noisy neighbor' problem). Per-tenant rate limiting at the API gateway (e.g., NGINX, Kong, AWS API Gateway) is the first lever — it's fast, reversible, and doesn't terminate service. Log the throttle events, notify the tenant, and investigate root cause (runaway automation scripts are common in RMM environments where agents can generate massive telemetry). Horizontal scaling only helps if you have headroom and the spike is broad; it doesn't isolate the offender."
+  },
+  {
+    section: "NinjaOne: Senior SRE",
+    question: "NinjaOne agents run on Windows and Linux endpoints and report telemetry continuously. During a major Windows patch Tuesday, 500,000 endpoints simultaneously push patch status updates. What architecture pattern prevents this from overwhelming the ingestion pipeline?",
+    options: [
+      "Have each agent wait for a 200 OK before sending the next batch — synchronous flow control",
+      "Jittered exponential backoff on the agent side so all endpoints don't report at exactly the same second, combined with a message queue (SQS/Kafka) to decouple ingestion from processing — the queue absorbs the burst and workers drain at a sustainable rate",
+      "Increase the number of ingest servers by 10× before every Patch Tuesday — predictable scaling solves predictable bursts",
+      "Disable patch status reporting during Patch Tuesday and collect it via a batch job the following day"
+    ],
+    answer: 1,
+    explanation: "Patch Tuesday is NinjaOne's 'thundering herd' event — half a million agents synchronized by Microsoft's update schedule. The pattern: (1) Jitter on the agent: spread reporting over a 30–60 minute window using random offset from the trigger time. (2) Message queue (SQS, Kafka) as a shock absorber: agents write to the queue; workers drain at capacity. Queue depth becomes your early warning metric. (3) Autoscaling consumers triggered by queue depth. Predictive scaling (option C) is additive but doesn't fix the architectural gap — a queue is the correct abstraction here."
+  },
+  {
+    section: "NinjaOne: Senior SRE",
+    question: "A NinjaOne customer calls to report that their managed devices show 'offline' in the dashboard but the devices are actually reachable. The SRE on call needs to triage quickly. What is the most likely failure point and how do you confirm?",
+    options: [
+      "The customer's internet is down — confirm by pinging their gateway from the NOC",
+      "The NinjaOne agent service on each device crashed — confirm by RDP'ing into one device and checking the service status",
+      "The agent-to-cloud communication path is broken — could be agent crash, connectivity issue, or the cloud-side WebSocket/long-poll relay. Confirm by: (a) checking NinjaOne's own status page and internal monitoring dashboards for elevated agent disconnect rates across all customers, (b) checking if the issue is isolated to this one customer (tenant-specific) or widespread (platform issue), (c) inspecting agent logs on one device for connection errors",
+      "The customer's firewall is blocking NinjaOne's IPs — confirm by checking if the same devices were online yesterday"
+    ],
+    answer: 2,
+    explanation: "Triage order for 'offline' devices in an RMM: (1) Is this one customer or many? If many → platform issue; escalate internally. If one customer → tenant-specific. (2) Check agent logs on a sample device — connection refused, TLS errors, and DNS failures tell different stories. (3) Verify NinjaOne cloud relay health (WebSocket/long-poll endpoint) — these are the always-on connections that agents maintain. (4) Confirm firewall/proxy is not blocking NinjaOne IPs/domains (common after network team makes changes). The structured triage prevents wasting time debugging agent-side when the platform is down."
+  },
+  {
+    section: "NinjaOne: Senior SRE",
+    question: "NinjaOne's monitoring platform must itself be monitored. What is the critical anti-pattern known as 'eating your own dog food' gone wrong in SRE monitoring, and how does NinjaOne avoid it?",
+    options: [
+      "Using NinjaOne agents to monitor NinjaOne's own infrastructure — if the platform goes down, the monitors go down too, creating a blind spot",
+      "Monitoring too many metrics and creating alert fatigue",
+      "Using the same cloud provider for monitoring and production workloads",
+      "Having SREs also write product features — conflict of interest"
+    ],
+    answer: 0,
+    explanation: "The 'dog-fooding blind spot': if NinjaOne used its own agent infrastructure to monitor NinjaOne's cloud services, a platform outage would silence the monitors that would detect the outage — circular dependency. The solution: external synthetic monitoring (Pingdom, Datadog, CloudWatch Synthetics) that is completely independent of NinjaOne's own stack checks the public endpoints continuously. Internal monitoring (NinjaOne agents on cloud infrastructure) is supplementary but cannot be the sole detection path. This is why every SaaS platform maintains at least one independent external watchdog that is not affected by internal failures."
+  },
+  {
+    section: "NinjaOne: Senior SRE",
+    question: "You are designing the SLO for NinjaOne's device-online detection feature. A device goes offline and NinjaOne must show it as offline within N minutes. What type of SLI is this and what drives the SLO target?",
+    options: [
+      "Availability SLI — measured as the percent of time the feature is reachable by customers",
+      "Latency SLI — the time for a web request to return device status",
+      "Freshness SLI (data staleness) — measured as the percentage of offline events that are reflected in the dashboard within the detection window (e.g., 5 minutes). SLO target is driven by customer contract SLA and the agent heartbeat interval",
+      "Error rate SLI — measured as the percentage of API calls that return 5xx errors"
+    ],
+    answer: 2,
+    explanation: "Device offline detection is a freshness SLI: how quickly does the system reflect reality? The SLI = (offline events shown in dashboard within N minutes) / (total offline events). The agent sends heartbeats on a configured interval (e.g., every 60 seconds). If the cloud side misses 2–3 heartbeats, it marks the device offline. The SLO window must be > 2× the heartbeat interval to avoid false positives. Customer SLAs typically require '5-minute detection.' The SRE crafts an SLO like: '95% of device offline events are reflected in the dashboard within 5 minutes.' Measure this in production with synthetic test agents that go offline on schedule."
+  },
+  {
+    section: "NinjaOne: Senior SRE",
+    question: "NinjaOne's patch management feature must push patch policies to 100,000 endpoints in a customer's environment. What deployment pattern ensures this doesn't cause a change storm on the customer network?",
+    options: [
+      "Push to all 100,000 devices simultaneously — modern Windows endpoints handle concurrent Windows Update fine",
+      "Use a ring deployment: first 1% (500 devices), monitor for failures, expand to 10%, then 50%, then 100%. Implement maintenance windows so patches apply during off-hours. Respect the customer's configured bandwidth throttle on the agent",
+      "Deploy only during business hours so IT staff are present to handle failures",
+      "Require the customer to manually approve each device — N endpoints require N approvals"
+    ],
+    answer: 1,
+    explanation: "Patch deployment to large fleets follows the same principles as software deployment: rings (canary → phased → full). NinjaOne's patch management respects: (1) Maintenance windows (customer-configured hours, e.g., 2–5 AM). (2) Reboot scheduling (patch without reboot risk during business hours). (3) Bandwidth throttling (agent-side limiter so mass downloads don't saturate the customer's WAN). (4) Ring deployment: small pilot group first, monitor patch success/failure rates, expand. A failed Windows patch that causes a BSOD on all 100K endpoints simultaneously is an existential event for the customer — rings are non-negotiable at this scale."
+  },
+  {
+    section: "NinjaOne: Senior SRE",
+    question: "NinjaOne's SaaS backend runs on AWS. During Black Friday (MSPs are deploying last-minute patches before holiday freeze), the background job queue depth spikes to 2 million jobs. SQS consumer lag grows. What are the two distinct autoscaling approaches for this situation and when do you use each?",
+    options: [
+      "Vertical scaling (larger EC2 instances) and horizontal scaling (more EC2 instances) — always use horizontal for queues",
+      "Target tracking on SQS ApproximateNumberOfMessagesVisible (queue depth) for ECS/EC2 consumers triggers horizontal scale-out of worker instances. Concurrently, step scaling on CPU of existing workers can increase thread pool size. Queue depth is the primary metric — not CPU or memory — because consumers might be I/O-bound (DB writes) and show low CPU while queue grows",
+      "Pause job processing during peak hours and batch process overnight — queues can handle the backlog",
+      "Switch from SQS to Kinesis during the spike — Kinesis handles higher throughput"
+    ],
+    answer: 1,
+    explanation: "For queue-backed workers, the scaling signal is queue depth, not CPU. Why: workers waiting on DB writes have low CPU but the queue is growing — CPU-based autoscaling would not trigger. Correct approach: (1) Horizontal scale-out: CloudWatch alarm on SQS ApproximateNumberOfMessagesVisible → scale ECS task count or EC2 ASG. Set scale-in cooldown long enough to drain the queue before scaling back. (2) If workers are CPU-bound (pure compute), step scaling on worker CPU is additive. For NinjaOne's background jobs (patch status, monitoring aggregation), most time is spent on DB writes — queue depth is the right metric."
+  },
+  {
+    section: "NinjaOne: Senior SRE",
+    question: "A NinjaOne customer reports that their scripting automation (PowerShell scripts run via NinjaOne) is failing silently — scripts run but results are never returned to the dashboard. Describe the distributed tracing investigation path.",
+    options: [
+      "Check the Windows Event Log on the target device — all script failures are logged there",
+      "Trace the script execution pipeline: (1) confirm the device agent received the script job (agent log: job ID received), (2) confirm script ran and output was captured (stdout/stderr captured by agent), (3) confirm agent uploaded result to NinjaOne cloud (outbound API call log), (4) confirm cloud ingested and persisted the result (backend service log for that job ID). Silent failure is usually a break in step 3 or 4: connectivity timeout on upload or cloud-side schema validation rejecting the result payload",
+      "Re-run the script manually via RDP — if it works locally, the issue is with NinjaOne's execution environment",
+      "The script is probably timing out — increase the timeout parameter in the policy settings"
+    ],
+    answer: 1,
+    explanation: "Script result delivery is a multi-hop pipeline: agent receives job → executes script → captures output → uploads result → cloud processes. Silent failure (script ran, no result) almost always means the upload step failed silently or the backend dropped the result. Distributed tracing approach: correlate the job ID across agent logs, network logs, and cloud ingestion logs. Common culprits: (1) Agent upload timeout (WAN latency on customer site), (2) Large output payload exceeding cloud API limit (NinjaOne truncates very large stdout), (3) Backend deserialization error on malformed output. The job ID is the correlation key — trace it end-to-end."
+  },
+  {
+    section: "NinjaOne: Senior SRE",
+    question: "NinjaOne must store 90 days of monitoring data (CPU, memory, disk, network) for hundreds of thousands of endpoints. What storage architecture handles this time-series workload efficiently?",
+    options: [
+      "Store all metrics in PostgreSQL with a composite index on (device_id, timestamp) — relational databases can handle time-series with proper indexing",
+      "A time-series database (TimescaleDB, InfluxDB, or AWS Timestream) with automatic data retention policies and downsampling (raw 60-second data for 7 days, 5-minute aggregates for 30 days, hourly aggregates for 90 days). Partition by time and device so queries for 'CPU for device X last 24 hours' hit only one partition",
+      "Store all metrics as JSON blobs in S3 and query with Athena — object storage is unlimited and cheap",
+      "Use DynamoDB with device_id as partition key and timestamp as sort key — NoSQL handles time-series natively"
+    ],
+    answer: 1,
+    explanation: "Time-series metrics require: (1) High write throughput (millions of data points/minute from endpoints). (2) Time-range queries with device filter. (3) Automatic retention and downsampling — raw granularity is not needed for 90-day-old data. TimescaleDB (PostgreSQL extension) or InfluxDB are purpose-built: compression for time-ordered data (10–20× vs raw), hypertable partitioning by time, built-in continuous aggregates, retention policies. Downsampling is critical: 60s data × 90 days × 500K devices = 3.6 trillion rows at raw granularity; hourly aggregates reduce that to 1.1 billion rows. The right architecture: hot tier (7 days, full resolution, fast SSD) → warm tier (30 days, 5-min aggregates) → cold tier (90 days, hourly aggregates)."
+  },
+  {
+    section: "NinjaOne: Senior SRE",
+    question: "NinjaOne's SRE team is asked to establish an on-call rotation for a team of 8 engineers. What are the key parameters of a sustainable on-call program, and what is the maximum acceptable on-call burden per engineer per month?",
+    options: [
+      "Each engineer should be on-call 50% of the time — shared responsibility means everyone carries equal load",
+      "On-call should rotate weekly; 8 engineers means each person is on-call roughly 1 week per 8 weeks (12.5% of time). Google SRE guideline: < 25% of on-call engineer's time should be spent on active incidents; if consistently higher, the team needs more people or fewer paging issues. Pages should not exceed 2 per 12-hour shift on average",
+      "On-call burden is irrelevant if the systems are reliable — good engineers accept any on-call load",
+      "On-call should be permanent for the 2 most senior engineers — they know the system best"
+    ],
+    answer: 1,
+    explanation: "Google SRE's on-call sustainability rules: (1) Maximum 25% of on-call time spent on active incidents (the rest is normal work). (2) Maximum 2 incidents per 12-hour shift on average (more = not enough time to follow up, write postmortems, sleep). (3) With 8 engineers rotating weekly: each person is on primary ~6.5 weeks/year (12.5%). The on-call health metrics to track: pages/shift, time-to-acknowledge, MTTR, % of time in active incident work. If p50 on-call shift has > 2 incidents requiring action, the team has an alert volume problem (not a staffing problem) — fix the alerts first. Also: always have a primary + secondary for escalation."
+  },
+  {
+    section: "NinjaOne: Senior SRE",
+    question: "NinjaOne operates in a regulated environment (SOC 2 Type II). A security audit requires all privileged access to production infrastructure be logged and audited. What AWS-native solution satisfies this for both console and CLI access?",
+    options: [
+      "Enable AWS Config to track resource changes — Config logs all API calls",
+      "CloudTrail for all API calls (console + CLI + SDK), with CloudTrail logs shipped to S3 with S3 Object Lock (WORM) for tamper-evident storage. AWS SSO / IAM Identity Center for human access with MFA enforcement — replaces long-lived IAM user keys with short-lived session credentials. Session Manager for SSH-less EC2 access (all commands logged to CloudTrail and optionally streamed to CloudWatch Logs / S3). This replaces bastion hosts and provides full audit trail",
+      "Install osquery on all EC2 instances to log commands run on each server",
+      "Use VPC Flow Logs to capture all network-level access to infrastructure"
+    ],
+    answer: 1,
+    explanation: "SOC 2 privileged access audit requirements: (1) CloudTrail: every AWS API call (console, CLI, SDK, cross-account) logged. Enable in all regions, log to S3 with S3 Object Lock (WORM prevents deletion). (2) IAM Identity Center (SSO): eliminates long-lived IAM user access keys — humans authenticate via SSO and receive temporary credentials. MFA enforced. All access tied to an identity. (3) AWS Systems Manager Session Manager: replaces SSH/bastion hosts. All session activity logged to CloudWatch Logs and S3. No need to open port 22. (4) GuardDuty: anomaly detection on CloudTrail events (unusual API calls, credential exfiltration attempts). Together these give NinjaOne the audit trail SOC 2 requires."
+  },
+  {
+    section: "NinjaOne: Senior SRE",
+    question: "NinjaOne's MSP customers use the platform to manage hundreds of client environments. What is the RTO/RPO implication of NinjaOne going down for an MSP, and how does this shape NinjaOne's SLA design?",
+    options: [
+      "MSPs only use NinjaOne for reporting — downtime has no operational impact",
+      "MSPs can switch to another RMM tool within minutes — NinjaOne downtime is a minor inconvenience",
+      "MSPs depend on NinjaOne for real-time monitoring alerts, remote access to client devices, and patch enforcement. NinjaOne downtime means the MSP cannot detect incidents at client sites or remediate them remotely — their own SLAs with end clients are at risk. This means NinjaOne's SLA must be stricter than the MSP's end-client SLA: if MSP promises 99.9% (43.2 min/month downtime), NinjaOne must target 99.95%+ to leave the MSP headroom for their own failures. RTO for NinjaOne must be < MSP's RTO, RPO must be near-zero for monitoring state",
+      "MSPs set their own RTO/RPO independent of their tool vendors — NinjaOne downtime is the MSP's problem to manage"
+    ],
+    answer: 2,
+    explanation: "NinjaOne is infrastructure for MSPs — it sits in their critical path. SLA cascade: NinjaOne's availability directly constrains what SLAs MSPs can offer. Design principle: the platform's SLO must be at least one 9 better than the customer's SLO to leave them error budget for their own failures. For NinjaOne: (1) Monitoring state (which devices are online, active alerts) must never be lost — RPO near zero. (2) Remote access (NinjaConnect) has RTO of minutes — MSPs use this for emergency remediation. (3) The dashboard/API has different criticality than the agent relay — an MSP can tolerate dashboard lag but cannot tolerate alert delivery failure. Design separate SLOs per capability."
+  },
+  {
+    section: "NinjaOne: Senior SRE",
+    question: "A NinjaOne deployment fails in production. The new version has a bug in the device agent updater that causes agents to enter a crash loop on Windows Server 2019. 30% of a customer's managed fleet is affected. What is the incident response sequence?",
+    options: [
+      "Immediately push a fixed version to all affected devices — speed is critical when devices are crash-looping",
+      "SEV1 declaration: (1) Halt the rollout for all remaining unaffected devices immediately — stop the blast radius. (2) Identify the affected population and notify the customer. (3) Roll back to the previous agent version on affected devices. (4) If rollback fails (crash loop prevents self-update), provide manual remediation steps (MSI installer, PowerShell, or GPO). (5) Postmortem: how did this pass QA on Server 2019, what is the release gate gap",
+      "Wait 30 minutes to see if the agents self-recover — crash loops sometimes resolve on their own after clearing temporary files",
+      "Have the customer reimage the affected devices — it's the fastest path to a clean state"
+    ],
+    answer: 1,
+    explanation: "Crash-looping agent on customer fleet: the incident priority is (1) Stop the spread — halt the bad rollout immediately. The 70% not yet updated are your lever. (2) Communicate — MSP customer needs status fast; their end clients' devices are offline. (3) Roll back — the previous agent version was known-good. Agent updater must always support downgrade. (4) Contingency — if the agent crash loop prevents self-update (it can't update itself if it can't run), you need a path that doesn't depend on the agent: GPO push, SCCM, or manual MSI with customer cooperation. (5) Gate future releases: crash loop on a common OS version is a hard regression that should have been caught in automated testing on Windows Server 2019. Add it to the release gate matrix."
+  },
+  {
+    section: "NinjaOne: Senior SRE",
+    question: "NinjaOne's backend uses microservices. Service A calls Service B synchronously. Service B is degraded (p99 latency = 8 seconds, timeout = 5 seconds). Service A times out and retries 3 times. What failure mode does this create and how do you fix it?",
+    options: [
+      "This is fine — retries ensure eventual success and the user experience is preserved",
+      "Retry storm / retry amplification: A's 3 retries turn 1 degraded request into 3× traffic on B, which is already struggling. B's degradation worsens, causing more A timeouts, which cause more retries — a positive feedback loop that collapses both services. Fix: exponential backoff with jitter on retries, circuit breaker in A to stop calling B when failure rate exceeds threshold, and retry budget (max retries per time window)",
+      "The problem is the timeout is too short — increase it to 10 seconds and the retries will succeed",
+      "Service B needs more instances immediately — retry storms are a scaling problem"
+    ],
+    answer: 1,
+    explanation: "Retry amplification is a classic distributed systems failure mode. Math: if B handles 1000 RPS and has 10% failure rate, A retries each failure 3×. Now B sees 1270 RPS (1000 × 1.0 + 100 failed × 2.7 additional retries ≈ 1270). Higher load → more failures → more retries → cascade. Fixes: (1) Exponential backoff with jitter (don't retry immediately). (2) Circuit breaker in A: after N consecutive failures, open the circuit and fail fast for a timeout period. This stops the retry storm and gives B time to recover. (3) Retry budget: rate-limit retries globally, not just per-request. (4) Hedge requests instead of retry: send a second request after a timeout threshold before the first completes, cancel whichever is slower. At NinjaOne scale (millions of agent connections), retry storms cascade catastrophically."
+  },
+  {
+    section: "NinjaOne: Senior SRE",
+    question: "NinjaOne's SRE team wants to reduce MTTR for database incidents. They implement runbooks in Confluence. Six months later, the runbooks haven't been used and MTTR hasn't improved. What is the most likely failure mode and what fixes it?",
+    options: [
+      "Runbooks need to be longer and more detailed — engineers couldn't find the answers they needed",
+      "Runbooks in Confluence are never used during incidents because: (1) engineers don't know they exist, (2) they're hard to find in a crisis, (3) they're outdated and no longer trusted, (4) they're not linked from alerts. Fix: link runbooks directly from PagerDuty/Datadog alerts (the exact runbook for the exact alert), test runbooks during game days, assign runbook ownership with quarterly review, and measure whether on-call engineers actually click the links",
+      "Runbooks are not needed — experienced SREs should know the systems well enough to diagnose without documentation",
+      "The problem is tooling — switch from Confluence to a different wiki and MTTR will improve"
+    ],
+    answer: 1,
+    explanation: "Runbook graveyard is an extremely common SRE failure mode. The fix is linking runbooks from the alert, not from a central doc. An engineer paged at 3 AM will open PagerDuty, see the alert, and look for a link. If the link isn't there, the runbook doesn't exist. NinjaOne SRE practice: (1) Every alert in PagerDuty/Datadog has a runbook URL in the alert body. (2) Runbook URL is validated in CI (link checker) so dead links fail the build. (3) Each runbook has an owner and a 'last tested' date — if older than 90 days, it's flagged as stale. (4) Game days: simulate the incident and actually execute the runbook, finding gaps before the real incident. MTTR improvement requires runbooks that are actually used, not runbooks that are written."
+  },
+  {
+    section: "NinjaOne: Senior SRE",
+    question: "NinjaOne's device monitoring uses WebSocket connections from agents to the cloud relay. After a cloud deploy, you observe 40% of WebSocket connections drop and don't reconnect. What AWS component most likely caused this and how do you verify?",
+    options: [
+      "The database ran out of connections — WebSocket drops are usually a DB pool exhaustion symptom",
+      "The Application Load Balancer (ALB) has a connection draining timeout. On deploy, new target group instances replace old ones. ALB drains existing connections (sends FIN) before deregistering old targets. If draining timeout is too short (default 300s but can be lowered), or if the new targets fail health checks and ALB stops routing to them, established WebSocket connections are terminated without reconnect logic on the agent side. Verify: check ALB access logs for 502/504 during deploy, check target group health check failures, review ALB deregistration delay setting",
+      "EC2 instance reboot during deploy terminates WebSockets — avoid reboots by using in-place code updates",
+      "Security group rules changed during deploy to block WebSocket traffic on port 443"
+    ],
+    answer: 1,
+    explanation: "WebSocket + ALB deployment interaction is a known NinjaOne-class problem (any SaaS with persistent connections). ALB behavior during rolling deploy: (1) New targets registered, health checks begin. (2) Old targets deregistered — ALB sends FIN to established WebSocket connections. (3) ALB deregistration delay (default 300s) — grace period before hard close. If 40% don't reconnect, agent-side reconnect logic is either missing or the backoff is too long. Verify via ALB access logs: look for 502s (backend not ready) or 504s (timeout) during the deploy window. Fix: (1) Extend deregistration delay to allow graceful agent reconnect. (2) Verify agents have exponential backoff reconnect logic. (3) Use NLB (Network Load Balancer) instead for TCP-level persistence — NLB does not terminate connections on target change."
+  },
+  {
+    section: "NinjaOne: Senior SRE",
+    question: "NinjaOne runs a fleet of Kubernetes workloads on EKS. A pod running the alert processing service OOMKills every 24–36 hours. What is your systematic investigation and permanent fix?",
+    options: [
+      "Increase the pod memory limit to 8 GB and monitor — OOMKills are always a misconfigured resource limit",
+      "Restart the pod automatically via a liveness probe — if it self-heals in 30 seconds, the OOMKill is not impacting users",
+      "Profile the memory growth: (1) Deploy JVM heap dump (or Python tracemalloc, Go pprof) triggered by high memory usage before OOMKill. (2) Analyze the heap dump for the object accumulation pattern — is it a cache with no eviction, a listener leak, or a growing in-memory queue? (3) Instrument with Prometheus memory metrics (go_memstats_*, jvm_memory_bytes_used) and track over 36-hour cycle. (4) Fix the root cause: add cache eviction, fix the leak, or add bounded queues. Only raise the limit if the baseline legitimate usage actually requires it",
+      "Switch the service to a stateless lambda function — functions don't OOMKill because they have fresh memory per invocation"
+    ],
+    answer: 2,
+    explanation: "OOMKill on a 24–36 hour cycle = memory leak pattern (not a spike workload). Raising the limit is not a fix — it delays the next OOMKill. The investigation: (1) Confirm the pattern via Prometheus: track memory over time, observe sawtooth pattern (grow → OOMKill → restart → grow). (2) Capture a heap dump before OOMKill: Kubernetes liveness probe (custom script) or memory threshold hook. (3) Analyze: common culprits in alert processing services: in-memory deduplication maps with no TTL, websocket connection pools not properly closed, growing log buffers. (4) Fix the specific leak. At NinjaOne scale, alert processing is high-cardinality (device × metric type × threshold) — deduplication maps without eviction are a classic source of leaks."
+  },
+  {
+    section: "NinjaOne: Senior SRE",
+    question: "NinjaOne's engineering org wants to move from a monthly release cadence to continuous deployment. The SRE team must design the safety net. Which combination of practices is required?",
+    options: [
+      "Continuous deployment just means deploying more often — no additional safety practices are required if developers write good tests",
+      "Feature flags (decouple deploy from release), automated rollback triggered by SLO burn rate alerts (deploy → monitor error rate → auto-rollback if burn rate exceeds threshold), canary deployments (1% → 10% → 100% with automated promotion criteria), and comprehensive integration tests in CI that gate every merge. Without these, continuous deployment turns continuous incidents",
+      "Continuous deployment is too risky for a platform that manages endpoint security — maintain monthly cadence",
+      "Blue/green deployment for every service — this is sufficient to enable safe continuous deployment"
+    ],
+    answer: 1,
+    explanation: "Continuous deployment safety net (the four pillars NinjaOne needs): (1) Feature flags: deploy code dark, enable per customer segment, roll back by flipping a flag without a redeploy. (2) Canary deployments: route 1% of traffic to new version, measure error rate/latency vs baseline, promote automatically if within SLO bounds. (3) Automated rollback: SLO burn rate alert in Datadog/CloudWatch triggers rollback if error rate exceeds threshold within the canary window. (4) Progressive delivery infrastructure (Argo Rollouts, Flagger, or Spinnaker) that orchestrates the canary with automatic promotion/rollback. At NinjaOne's scale (agents on critical customer infrastructure), even a 1% bad rollout affects thousands of endpoints — canary discipline is non-negotiable."
+  },
+  {
+    section: "NinjaOne: Senior SRE",
+    question: "A NinjaOne postmortem concludes with 15 action items. Six months later, only 2 were completed. What systemic failure caused this and what process change fixes it?",
+    options: [
+      "Engineers are lazy — enforce completion via performance reviews",
+      "15 action items is too many — reduce to 3 per postmortem",
+      "Postmortem action items fail when they're not tracked in the same system as regular engineering work, assigned to no owner, or have no deadline. Fix: (1) Every action item gets a JIRA ticket created before the postmortem meeting ends. (2) Each ticket has a single named owner (not 'team'). (3) Tickets are triaged into the sprint like any other work — SRE management defends their priority. (4) Postmortem review meeting 30 days later: report status of all open items. (5) Track 'postmortem action item completion rate' as an SRE health metric",
+      "Postmortems should be replaced with blameful RCAs — accountability drives completion"
+    ],
+    answer: 2,
+    explanation: "Postmortem action item graveyard is a widespread SRE failure mode. The root cause: action items created in one system (postmortem doc) don't compete for engineering attention in the real system (sprint planning). Fixes: (1) Every action item is a JIRA/Linear ticket before the meeting ends — no ticket, no action item. (2) Single owner, not 'the team' — shared ownership = no ownership. (3) Priority: at least one action item per postmortem must be prioritized in the next sprint. (4) 30-day review: dedicated meeting to revisit open items — creates accountability without blame. (5) Completion rate metric: if < 70% of P1 postmortem items are closed within 60 days, the SRE program has a systemic problem. At NinjaOne scale, unaddressed postmortem items from critical incidents mean the same incident recurs."
+  },
+  {
+    section: "NinjaOne: Senior SRE",
+    question: "NinjaOne's SRE team is building a capacity planning model for the coming year. The platform currently manages 2 million endpoints and will onboard an enterprise customer adding 500,000 endpoints in Q3. What SRE-owned inputs drive the capacity forecast?",
+    options: [
+      "Just ask the infra team to add 25% more servers — 500,000 is 25% of 2 million",
+      "Endpoints per second of telemetry × average payload size = ingest bandwidth. Agent heartbeat frequency × endpoint count = WebSocket connection load. Alert evaluation rate = (endpoints × monitored metrics × alert rules) / evaluation interval. These drive: SQS queue depth projections, database write IOPS, WebSocket relay connection counts, and alert engine compute. The SRE builds a load model from current per-endpoint metrics, projects to 2.5M, and identifies the bottleneck service — not a flat 25% everywhere",
+      "Capacity planning is an infrastructure concern — SREs focus on reliability, not provisioning",
+      "Add 500,000 to the database record count and check if current storage is sufficient — everything else scales automatically in AWS"
+    ],
+    answer: 1,
+    explanation: "Capacity planning for NinjaOne's endpoint-per-unit cost model: (1) Measure current per-endpoint resource consumption: telemetry ingest MB/s/endpoint, WebSocket connections/endpoint, alert evaluations/endpoint/minute, DB IOPS/endpoint. (2) Project: 500K new endpoints × per-endpoint rates = incremental load per service. (3) Identify bottleneck: which service hits its limit first? At NinjaOne, this is typically the WebSocket relay (connection table size), the alert evaluation engine (CPU-bound at high cardinality), or the time-series DB (write throughput). (4) Runway analysis: how many endpoints until each service saturates, at current growth rate. (5) Remediation lead time: some fixes (sharding the DB) take quarters — the capacity plan must account for implementation time. This is SRE-owned because it requires both reliability expertise and systems knowledge."
   }
 
 ]; // end ALL_QUESTIONS
@@ -4156,6 +4398,8 @@ const TOPIC_GROUPS = [
     topics: ['§21 Precision: Load Average','§21 Precision: Orphan vs Zombie','§21 Precision: 4096 & Memory','§21 Precision: D-State Exit Paths','§21 Precision: pid_max & Process Limits'] },
   { id: 'sysdesign', label: 'System Design',
     topics: ['Section 22: System Design'] },
+  { id: 'ninjaone', label: 'NinjaOne: Senior SRE',
+    topics: ['NinjaOne: Senior SRE'] },
 ];
 
 let selectedSections = new Set(TOPIC_GROUPS.flatMap(g => g.topics));
