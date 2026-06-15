@@ -973,6 +973,128 @@ const ALL_QUESTIONS = [
     explanation: "Load average uses an exponential moving average (1/5/15 min). A spike 8 minutes ago still heavily influences the 15-minute number. If current CPU is low and no D-state processes exist, you're watching a decaying tail. Correlate with `sar -q` for historical load or check `uptime` timestamp. Also valid: CPU steal (st%) — check `top` steal column before concluding."
   },
 
+  // ── Section 9: LVM ───────────────────────────────────────────────────────
+  {
+    section: "Section 9: LVM",
+    question: "What is the correct layered order of the LVM stack, from raw disk to mounted filesystem?",
+    options: [
+      "Disk → VG → PV → LV → filesystem",
+      "Disk → PV → VG → LV → filesystem → mount point",
+      "PV → VG → LV → disk → filesystem",
+      "Disk → LV → VG → PV → filesystem"
+    ],
+    answer: 1,
+    explanation: "The LVM stack: Physical Volume (PV) — a raw disk or partition initialized with pvcreate. Volume Group (VG) — one or more PVs pooled together with vgcreate. Logical Volume (LV) — a slice of the VG created with lvcreate, then formatted and mounted. The abstraction lets you span and resize volumes across multiple physical disks."
+  },
+  {
+    section: "Section 9: LVM",
+    question: "You have a new disk /dev/sdb and want to add its space to existing volume group `data_vg`. What is the correct two-command sequence?",
+    options: [
+      "mkfs.ext4 /dev/sdb → vgextend data_vg /dev/sdb",
+      "pvcreate /dev/sdb → vgextend data_vg /dev/sdb",
+      "vgcreate data_vg /dev/sdb → lvextend",
+      "fdisk /dev/sdb → vgimport data_vg"
+    ],
+    answer: 1,
+    explanation: "pvcreate initializes /dev/sdb as a Physical Volume (writes LVM metadata to the disk). vgextend adds that PV to the existing VG, making its space available for lvcreate or lvextend. Never format the disk first — pvcreate needs a raw block device."
+  },
+  {
+    section: "Section 9: LVM",
+    question: "You ran `lvextend -L +20G /dev/data_vg/data_lv` on an ext4 volume. `df -h` still shows the old size. Why?",
+    options: [
+      "lvextend failed silently — check vgs for free space",
+      "lvextend grows the block device but not the filesystem. Run `resize2fs /dev/data_vg/data_lv` to expand the ext4 filesystem to fill the new space",
+      "The volume must be unmounted and remounted for the new size to appear",
+      "A reboot is required for the kernel to recognize the extended LV"
+    ],
+    answer: 1,
+    explanation: "lvextend is a block-device operation — it changes the LV size in LVM metadata. The filesystem inside the LV is unaware of the new space. For ext4: `resize2fs /dev/vg/lv` (can be done online). For XFS: `xfs_growfs /mountpoint` (also online). Shortcut: `lvextend -r -L +20G /dev/vg/lv` — the -r flag calls resize2fs/xfs_growfs automatically."
+  },
+  {
+    section: "Section 9: LVM",
+    question: "What is the correct command to grow an XFS filesystem after lvextend?",
+    options: [
+      "resize2fs /dev/vg/lv",
+      "xfs_growfs /mountpoint",
+      "xfs_repair -L /dev/vg/lv",
+      "mkfs.xfs -f /dev/vg/lv"
+    ],
+    answer: 1,
+    explanation: "resize2fs is ext2/3/4 only. XFS uses xfs_growfs and takes the mount point as its argument (not the device path). XFS can only grow, never shrink — it's a fundamental XFS design constraint. ext4 can shrink, but must be unmounted first."
+  },
+  {
+    section: "Section 9: LVM",
+    question: "What is a Physical Extent (PE) in LVM and why does it matter?",
+    options: [
+      "A partition entry in the disk's partition table that LVM manages",
+      "The smallest unit of allocation in LVM (default 4 MiB). LVs are allocated in whole PEs — so LV sizes are rounded to PE boundaries. Larger PE size = fewer extents to track but coarser granularity",
+      "The physical sector alignment that LVM uses for SSD optimization",
+      "An encrypted block used when LVM is combined with dm-crypt"
+    ],
+    answer: 1,
+    explanation: "Physical Extents are the atomic unit LVM thinks in. Default PE size is 4 MiB (set at vgcreate time with -s). An LV requesting 10 GiB gets 2560 PEs (10240 MiB / 4 MiB). PE size affects max VG size — with 4 MiB PEs, max VG is 16 TiB (4MiB × 2^32 extents). Increase PE size for very large VGs."
+  },
+  {
+    section: "Section 9: LVM",
+    question: "You want to snapshot /dev/data_vg/data_lv before a risky database migration. What is the correct command?",
+    options: [
+      "cp -a /dev/data_vg/data_lv /dev/data_vg/data_snap",
+      "lvcreate -s -n data_snap -L 5G /dev/data_vg/data_lv",
+      "lvextend --snapshot -n data_snap /dev/data_vg/data_lv",
+      "vgsnapshot data_vg data_snap 5G"
+    ],
+    answer: 1,
+    explanation: "lvcreate -s creates a COW snapshot. The snapshot stores only the delta (blocks that change after snapshot creation). -L 5G is the COW space — allocate enough for writes expected during the operation. If the COW space fills, the snapshot is invalidated. To revert: lvconvert --merge /dev/data_vg/data_snap. Snapshots add write overhead to the origin LV while active."
+  },
+  {
+    section: "Section 9: LVM",
+    question: "You need to decommission /dev/sdb from volume group `vg0`. The VG has enough free space on remaining disks. What is the safe three-step procedure?",
+    options: [
+      "vgremove vg0 → pvcreate the new disk → vgcreate",
+      "pvmove /dev/sdb → vgreduce vg0 /dev/sdb → pvremove /dev/sdb",
+      "lvremove all LVs → vgreduce vg0 /dev/sdb → pvremove",
+      "Simply unplug the disk — LVM will automatically rebuild from remaining PVs"
+    ],
+    answer: 1,
+    explanation: "pvmove migrates all allocated extents off /dev/sdb to other PVs in the VG (online, no downtime, data stays available). vgreduce removes the now-empty PV from the VG. pvremove wipes the LVM metadata from the disk. Never just unplug — unless the VG was set up with mirroring/RAID, losing a PV loses the data on it."
+  },
+  {
+    section: "Section 9: LVM",
+    question: "What does `lvcreate -l 100%FREE -n data_lv data_vg` do differently from `lvcreate -L 50G -n data_lv data_vg`?",
+    options: [
+      "100%FREE creates a sparse LV; -L creates a thick-provisioned LV",
+      "-l 100%FREE allocates all remaining free extents in the VG to the new LV; -L 50G allocates exactly 50 GiB regardless of free space",
+      "100%FREE creates a striped LV across all PVs; -L creates a linear LV",
+      "They are equivalent if the VG has exactly 50 GiB free"
+    ],
+    answer: 1,
+    explanation: "-l uses extents (relative), -L uses absolute size. '-l 100%FREE' is the idiom for 'give this LV everything that's left in the VG'. Other useful relative sizes: '-l 50%VG' (half the total VG), '-l 50%PVS' (half the free space on specified PVs). Absolute -L is clearer for predictable sizes."
+  },
+  {
+    section: "Section 9: LVM",
+    question: "You try `lvreduce -L -10G /dev/data_vg/data_lv` on an XFS volume. What is wrong with this?",
+    options: [
+      "lvreduce requires the -f flag to confirm destructive operations",
+      "XFS cannot be shrunk at all — and on any filesystem, you must shrink the filesystem first before reducing the LV, or you truncate the filesystem and corrupt data",
+      "You must unmount and run xfs_repair before shrinking",
+      "lvreduce only works on LVs that are not part of a VG with multiple PVs"
+    ],
+    answer: 1,
+    explanation: "Two problems: (1) XFS has no shrink capability — it is architecturally grow-only. (2) Even for ext4 (which can shrink), you must always shrink the filesystem first, then the LV — never the other way around. Shrinking the LV first truncates the filesystem's data area, corrupting it. ext4 shrink sequence: unmount → resize2fs /dev/vg/lv 40G → lvreduce -L 40G /dev/vg/lv → remount."
+  },
+  {
+    section: "Section 9: LVM",
+    question: "Which three commands give you a concise summary of PV, VG, and LV state for daily use?",
+    options: [
+      "pvstat, vgstat, lvstat",
+      "pvs, vgs, lvs",
+      "pvdisplay, vgdisplay, lvdisplay",
+      "lsblk, df -h, free -h"
+    ],
+    answer: 1,
+    explanation: "pvs, vgs, lvs are the terse summary commands — one line per object, machine-friendly, fast. pvdisplay/vgdisplay/lvdisplay give verbose detail (useful for deep inspection). Quick mental model: 'pvs' shows PV size and which VG it belongs to; 'vgs' shows total/free space in each VG; 'lvs' shows LV size, VG, and mount path. Start every LVM troubleshooting session with all three."
+  },
+
   // ── Section 10: Terraform ─────────────────────────────────────────────────
   {
     section: "Section 10: Terraform",
@@ -4023,7 +4145,7 @@ function restartQuiz() {
 // Topic groups for section filtering
 const TOPIC_GROUPS = [
   { id: 'linux', label: 'Linux Fundamentals',
-    topics: ['Section 1: The Magic Numbers','Section 2: The Memory Story','Section 3: Process Lifecycle','Section 4: Signals','Section 5: D-State / Load Average','Section 6: Files, FDs, Inodes','Section 7: DNS Resolution Path','Section 8: Advanced Linux SRE'] },
+    topics: ['Section 1: The Magic Numbers','Section 2: The Memory Story','Section 3: Process Lifecycle','Section 4: Signals','Section 5: D-State / Load Average','Section 6: Files, FDs, Inodes','Section 7: DNS Resolution Path','Section 8: Advanced Linux SRE','Section 9: LVM'] },
   { id: 'aws', label: 'Terraform & AWS',
     topics: ['Section 10: Terraform','Section 11: IAM','Section 12: EC2','Section 13: ECS','Section 14: RDS','Section 15: The SRE Layer','AWS: Networking & VPC','AWS: Lambda & Serverless','AWS: S3 & Storage','AWS: Auto Scaling & High Availability','AWS: KMS & Security','AWS: CloudFormation','AWS: CIDR & Subnetting'] },
   { id: 'k8s', label: 'Containers & Kubernetes',

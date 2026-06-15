@@ -1,0 +1,47 @@
+
+
+a sev1 incident starts at 2am. walk through the correct response order.
+
+1. Acknowledge and assess severity
+2. open war room in slack
+3. assign an incident commander to own communication
+4. mitigation - rollback/failover/scale
+5. communicate status
+6. root cause
+7. resolution
+8. post mortem
+
+mitigate first, do root cause analysis later (probably not at 2am). 
+
+1) ack page
+2) assess severity, declare sev1 if prod is down
+3) open a bridge in zoom/slack
+4) mitigation - rollback, failover, scale, kill a bad / stuck job
+5) communication with stakeholders every 15-30 minutes
+6) once stable look for root cause
+7) resolve the page
+8) blameless postmortem, identify action items
+
+
+SLO, SLA, SLI
+
+SLA is your agreement or contract with your customer
+SLO are the objectives you want to meet or exceed over a number of days, responsiveness, etc.
+SLI service level indicators - 4 golden signals - latency, errors, saturation, and traffic... p99 latency or p99 errors? p95 errors? what
+is the error budget. alert on % of error budget burn, not 80% cpu or disk 99% full (although those are useful)
+
+
+SLI is what you measure, SLO is what you aim for, SLA is what you promise. SLOs are your goals for system or application status. 
+
+
+two of the four golden signals - latency and errors - these make good service level objective grade SLIs. 
+
+use p99 when slow outliers hurt end users. use p50 / p95 when you only care about the typical request. typical request is the
+fat part of the performance band, where most latency lives. 
+
+
+alert on burn rate against your SLO, not a static threshold. 
+
+
+
+

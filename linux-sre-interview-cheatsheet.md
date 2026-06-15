@@ -116,7 +116,86 @@ Confirm: `ps -eLf | wc -l`, `ulimit -u`, `pids.current` in the cgroup, `ps aux |
 
 ---
 
-## 9. Kernel, One Breath
+## 9. LVM — Logical Volume Management
+
+### The stack (say this order cold)
+
+```
+Physical disk / partition
+        ↓  pvcreate
+  Physical Volume (PV)       — raw block device initialized for LVM
+        ↓  vgcreate / vgextend
+   Volume Group (VG)         — pool of one or more PVs
+        ↓  lvcreate
+   Logical Volume (LV)       — slice of the VG, acts like a block device
+        ↓  mkfs.ext4 / mkfs.xfs
+      Filesystem
+        ↓  mount
+     Mount point
+```
+
+### Key commands
+
+| Operation | Command |
+|-----------|---------|
+| Initialize a disk as PV | `pvcreate /dev/sdb` |
+| Create a VG | `vgcreate data_vg /dev/sdb` |
+| Add disk to existing VG | `pvcreate /dev/sdc && vgextend data_vg /dev/sdc` |
+| Create an LV (fixed size) | `lvcreate -L 20G -n data_lv data_vg` |
+| Create an LV (all free space) | `lvcreate -l 100%FREE -n data_lv data_vg` |
+| Extend an LV + resize fs | `lvextend -r -L +10G /dev/data_vg/data_lv` |
+| Extend LV only | `lvextend -L +10G /dev/data_vg/data_lv` |
+| Resize ext4 fs after extend | `resize2fs /dev/data_vg/data_lv` |
+| Resize XFS fs after extend | `xfs_growfs /mountpoint` |
+| Snapshot | `lvcreate -s -n snap -L 5G /dev/data_vg/data_lv` |
+| Revert to snapshot | `lvconvert --merge /dev/data_vg/snap` |
+| Safely remove a disk | `pvmove /dev/sdb → vgreduce data_vg /dev/sdb → pvremove /dev/sdb` |
+| Summary (daily use) | `pvs` / `vgs` / `lvs` |
+| Verbose detail | `pvdisplay` / `vgdisplay` / `lvdisplay` |
+
+### Critical rules — these come up in interviews
+
+- **lvextend ≠ filesystem resize.** `lvextend` grows the block device; the filesystem is unaware. Always follow with `resize2fs` (ext4) or `xfs_growfs` (XFS). The `-r` flag on `lvextend` does both in one step.
+- **XFS cannot shrink.** Period — it is architecturally grow-only. ext4 can shrink but must be unmounted first.
+- **Shrink order matters: filesystem first, then LV.** `lvreduce` without shrinking the filesystem first truncates the filesystem data area → corruption. ext4 shrink: unmount → `resize2fs /dev/vg/lv <new_size>` → `lvreduce -L <new_size> /dev/vg/lv` → remount.
+- **pvmove before removing a disk.** `pvmove /dev/sdb` migrates all extents off that PV to other PVs in the VG — online, no downtime. Then `vgreduce` + `pvremove`.
+
+### Physical Extents (PE)
+
+- Smallest unit of LVM allocation. Default: **4 MiB**.
+- Set at VG creation: `vgcreate -s 8M data_vg /dev/sdb`
+- LV sizes are rounded to PE boundaries.
+- Max VG size = PE size × 2³². At 4 MiB PE → 16 TiB max. Increase PE size for very large VGs.
+
+### Snapshots
+
+- COW snapshots: only changed blocks are stored in the snapshot space.
+- `-L` on snapshot = the COW buffer size. If writes fill it, the snapshot is **invalidated** (not the origin LV).
+- Add write overhead to the origin LV while the snapshot is active.
+- Use case: pre-migration safety net, backup of live filesystem (mount the snapshot read-only).
+
+### One-liners worth knowing
+
+```bash
+# Show full LVM tree
+lsblk
+
+# Check VG free space
+vgs --units g
+
+# Check which PV has the most free space
+pvs --units g
+
+# Extend root LV by 10G and resize in one step (ext4 or xfs auto-detected with -r)
+lvextend -r -L +10G /dev/rootvg/root
+
+# Watch pvmove progress
+pvmove /dev/sdb && watch -n1 pvs
+```
+
+---
+
+## 10. Kernel, One Breath
 
 "The kernel manages hardware on behalf of user space — process scheduling, virtual memory, filesystems, networking, drivers. User space crosses into kernel space via syscalls, which is exactly what strace lets you watch."
 
