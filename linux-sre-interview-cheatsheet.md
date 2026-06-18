@@ -619,6 +619,65 @@ kubectl get pods --sort-by='.status.startTime' | tail -20
 ```
 
 ---
+
+## Top 5 Ansible Commands (Daily Use)
+
+**1. `ansible` — run ad-hoc commands against hosts**
+```bash
+ansible all -m ping                                   # connectivity check across all hosts
+ansible webservers -m command -a "uptime"             # run a command on a group
+ansible all -m shell -a "df -h / | tail -1"          # shell command (supports pipes/redirects)
+ansible all -m gather_facts --tree /tmp/facts         # collect and dump host facts to files
+ansible all -i inventory.ini -m ping                  # use a specific inventory file
+```
+`command` is safer (no shell expansion); use `shell` only when you need pipes or glob expansion.
+
+**2. `ansible-playbook` — run a playbook**
+```bash
+ansible-playbook site.yml                             # run a playbook
+ansible-playbook site.yml --limit webservers          # only run against a subset of hosts
+ansible-playbook site.yml --tags deploy               # only run tasks tagged "deploy"
+ansible-playbook site.yml --skip-tags restart         # skip tasks tagged "restart"
+ansible-playbook site.yml --check                     # dry-run (no changes made)
+ansible-playbook site.yml --diff                      # show file diffs alongside changes
+ansible-playbook site.yml -v / -vvv                   # increase verbosity (up to -vvvv)
+```
+
+**3. `ansible-inventory` — inspect your inventory**
+```bash
+ansible-inventory --list                              # dump full inventory as JSON
+ansible-inventory --graph                             # tree view of groups and hosts
+ansible-inventory --host web01                        # show vars for a single host
+ansible-inventory -i inventory.ini --list             # use a specific inventory file
+```
+
+**4. `ansible-vault` — manage secrets**
+```bash
+ansible-vault create secrets.yml                      # create an encrypted file
+ansible-vault edit secrets.yml                        # edit in place (decrypts, re-encrypts)
+ansible-vault encrypt vars/passwords.yml              # encrypt an existing file
+ansible-vault decrypt vars/passwords.yml              # decrypt in place (careful in repos)
+ansible-vault view secrets.yml                        # view without decrypting to disk
+ansible-playbook site.yml --ask-vault-pass            # prompt for vault password at runtime
+ansible-playbook site.yml --vault-password-file .vaultpass  # use a password file
+```
+
+**5. `ansible-galaxy` — manage roles and collections**
+```bash
+ansible-galaxy install geerlingguy.nginx              # install a role from Galaxy
+ansible-galaxy collection install community.general   # install a collection
+ansible-galaxy list                                   # show installed roles/collections
+ansible-galaxy init my_role                           # scaffold a new role directory
+ansible-galaxy install -r requirements.yml            # install all deps from a file
+```
+
+**Bonus — debug a variable or template without running the whole play:**
+```bash
+ansible all -m debug -a "var=ansible_default_ipv4.address"   # print a fact for every host
+ansible-playbook site.yml --start-at-task "restart nginx"    # resume from a specific task
+```
+
+---
 ---
 
 # Part 4 — Identity Management & PKI
